@@ -1,74 +1,162 @@
-'use client';
+"use client";
 
-import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useDashboardStats } from "@/hooks/useDashboardStats";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Separator } from "@/components/ui/separator";
+import { Line, Bar } from "react-chartjs-2";
+import {
+  CategoryScale,
+  Chart as ChartJS,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  PointElement,
+  LineElement,
+} from "chart.js";
+import { Skeleton } from "@/components/ui/skeleton";
+
+// Register Chart.js components
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, PointElement, LineElement);
 
 export default function AdminDashboard() {
+  const { stats, loading } = useDashboardStats();
+
   return (
-    <div className="h-screen p-4">
-      <ResizablePanelGroup direction="horizontal">
-        <ResizablePanel defaultSize={50} className="p-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Sold Quantities</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-4xl font-bold">158</p>
-              <p className="text-sm text-muted-foreground">Items sold today</p>
-            </CardContent>
-          </Card>
-        </ResizablePanel>
+    <div className="p-6 space-y-6 w-full ">
+      <h1 className="text-2xl font-bold">Admin Dashboard</h1>
 
-        <ResizableHandle />
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {loading ? (
+          [...Array(4)].map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-lg" />)
+        ) : (
+          <>
+            <DashboardCard title="Total Sales" value={`$${stats?.totalSales.toFixed(2)}`} />
+            <DashboardCard title="Total Orders" value={stats?.totalOrders ?? 0} />
+            <DashboardCard title="Total Categories" value={stats?.totalCategories ?? 0} />
+            <DashboardCard title="Total Waiters" value={stats?.totalWaiters ?? 0} />
+          </>
+        )}
+      </div>
 
-        <ResizablePanel defaultSize={50} className="p-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Waiter Work Hours</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-1">
-                <li>John Doe: <strong>6 hrs</strong></li>
-                <li>Jane Smith: <strong>8 hrs</strong></li>
-                <li>Mark Taylor: <strong>5 hrs</strong></li>
-              </ul>
-            </CardContent>
-          </Card>
-        </ResizablePanel>
-      </ResizablePanelGroup>
+      <Separator />
 
-      <div className="mt-4">
-        <ResizablePanelGroup direction="horizontal">
-          <ResizablePanel defaultSize={50} className="p-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Today's Revenue</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-4xl font-bold">$1,280</p>
-                <p className="text-sm text-muted-foreground">Total sales revenue</p>
-              </CardContent>
-            </Card>
-          </ResizablePanel>
+      {/* Charts */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <ChartCard title="Sales Over Time">
+          {loading || !stats ? (
+            <Skeleton className="h-64 w-full" />
+          ) : (
+            <Line
+              data={{
+                labels: stats.salesOverTime.labels,
+                datasets: [
+                  {
+                    label: "Sales ($)",
+                    data: stats.salesOverTime.data,
+                    borderColor: "#4F46E5",
+                    backgroundColor: "rgba(79, 70, 229, 0.2)",
+                    tension: 0.3,
+                  },
+                ],
+              }}
+            />
+          )}
+        </ChartCard>
 
-          <ResizableHandle />
+        <ChartCard title="Top Selling Categories">
+          {loading || !stats ? (
+            <Skeleton className="h-64 w-full" />
+          ) : (
+            <Bar
+              data={{
+                labels: stats.topCategories.labels,
+                datasets: [
+                  {
+                    label: "Sales",
+                    data: stats.topCategories.data,
+                    backgroundColor: ["#F87171", "#60A5FA", "#34D399", "#FBBF24"],
+                  },
+                ],
+              }}
+            />
+          )}
+        </ChartCard>
+      </div>
 
-          <ResizablePanel defaultSize={50} className="p-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Top Selling Items</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ol className="list-decimal ml-4">
-                  <li>Burger (45 sold)</li>
-                  <li>Cappuccino (32 sold)</li>
-                  <li>Pasta (28 sold)</li>
-                </ol>
-              </CardContent>
-            </Card>
-          </ResizablePanel>
-        </ResizablePanelGroup>
+      <Separator />
+
+      {/* Latest Orders Table */}
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-md p-4">
+        <h2 className="text-lg font-semibold mb-3">Latest Orders</h2>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Order ID</TableHead>
+              <TableHead>Customer</TableHead>
+              <TableHead>Total</TableHead>
+              <TableHead>Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading || !stats
+              ? [...Array(5)].map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell colSpan={4}>
+                      <Skeleton className="h-6 w-full" />
+                    </TableCell>
+                  </TableRow>
+                ))
+              : stats.latestOrders.map((order) => (
+                  <TableRow key={order.id}>
+                    <TableCell>{order.id}</TableCell>
+                    <TableCell>{order.customer}</TableCell>
+                    <TableCell>${order.total.toFixed(2)}</TableCell>
+                    <TableCell>
+                      <span
+                        className={`px-2 py-1 text-xs rounded ${
+                          order.status === "Completed"
+                            ? "bg-green-500 text-white"
+                            : "bg-yellow-500 text-white"
+                        }`}
+                      >
+                        {order.status}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                ))}
+          </TableBody>
+        </Table>
       </div>
     </div>
+  );
+}
+
+// Reusable Dashboard Card Component
+function DashboardCard({ title, value }: { title: string; value: string | number }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p className="text-2xl font-semibold">{value}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+// Reusable Chart Card Component
+function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+      </CardHeader>
+      <CardContent>{children}</CardContent>
+    </Card>
   );
 }

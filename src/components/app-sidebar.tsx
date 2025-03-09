@@ -5,13 +5,18 @@ import {
   AudioWaveform,
   BookOpen,
   Bot,
+  Coffee,
   Command,
+  DollarSign,
   Frame,
   GalleryVerticalEnd,
+  Layers,
+  LayoutDashboard,
   Map,
   PieChart,
   Settings2,
   SquareTerminal,
+  Users,
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -52,108 +57,95 @@ const data = {
   ],
   navMain: [
     {
-      title: "Playground",
-      url: "#",
-      icon: SquareTerminal,
+      title: "Dashboard",
+      url: "/admin",
+      icon: LayoutDashboard,
       isActive: true,
       items: [
         {
-          title: "History",
-          url: "#",
-        },
-        {
-          title: "Starred",
-          url: "#",
-        },
-        {
-          title: "Settings",
-          url: "#",
+          title: "View Dashboard",
+          url: "/admin",
         },
       ],
     },
     {
-      title: "Models",
-      url: "#",
-      icon: Bot,
+      title: "Waiters",
+      url: "/admin/waiters",
+      icon: Users,
+      isActive: false,
       items: [
         {
-          title: "Genesis",
-          url: "#",
-        },
-        {
-          title: "Explorer",
-          url: "#",
-        },
-        {
-          title: "Quantum",
-          url: "#",
+          title: "View All",
+          url: "/admin/waiters",
         },
       ],
     },
     {
-      title: "Documentation",
-      url: "#",
-      icon: BookOpen,
+      title: "Tables",
+      url: "/admin/tables",
+      icon: Layers,
+      isActive: false,
       items: [
         {
-          title: "Introduction",
-          url: "#",
-        },
-        {
-          title: "Get Started",
-          url: "#",
-        },
-        {
-          title: "Tutorials",
-          url: "#",
-        },
-        {
-          title: "Changelog",
-          url: "#",
+          title: "View All",
+          url: "/admin/tables",
         },
       ],
     },
     {
-      title: "Settings",
-      url: "#",
-      icon: Settings2,
+      title: "Food & Drinks",
+      url: "/admin/foods",
+      icon: Coffee,
+      isActive: false,
       items: [
         {
-          title: "General",
-          url: "#",
+          title: "View All",
+          url: "/admin/foods",
         },
+      ],
+    },
+    {
+      title: "Categories",
+      url: "/admin/categories",
+      icon: Layers,
+      isActive: false,
+      items: [
         {
-          title: "Team",
-          url: "#",
+          title: "View All",
+          url: "/admin/categories",
         },
+      ],
+    },
+    {
+      title: "Finances",
+      url: "/admin/finances",
+      icon: DollarSign,
+      isActive: false,
+      items: [
         {
-          title: "Billing",
-          url: "#",
-        },
-        {
-          title: "Limits",
-          url: "#",
+          title: "View Summary",
+          url: "/admin/finances",
         },
       ],
     },
   ],
-  projects: [
-    {
-      name: "Design Engineering",
-      url: "#",
-      icon: Frame,
-    },
-    {
-      name: "Sales & Marketing",
-      url: "#",
-      icon: PieChart,
-    },
-    {
-      name: "Travel",
-      url: "#",
-      icon: Map,
-    },
-  ],
+  // projects: [
+  //   {
+  //     name: "Design Engineering",
+  //     url: "#",
+  //     icon: Frame,
+  //   },
+  //   {
+  //     name: "Sales & Marketing",
+  //     url: "#",
+  //     icon: PieChart,
+  //   },
+  //   {
+  //     name: "Travel",
+  //     url: "#",
+  //     icon: Map,
+  //   },
+  // ],
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -164,7 +156,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
-        <NavProjects projects={data.projects} />
+        {/* {data.projects ? (
+          <NavProjects projects={data.projects} />
+        ):(
+          <></>
+        ) */}
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={data.user} />

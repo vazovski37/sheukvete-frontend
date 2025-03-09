@@ -1,5 +1,5 @@
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { setCookie, parseCookies, destroyCookie } from 'nookies';
 import { UserLogin } from '@/types/user';
 import { authService } from '@/services/authService';
@@ -11,6 +11,7 @@ export const useLogin = () => {
   const [error, setError] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(cookies.token || null);
   const [role, setRole] = useState<string | null>(cookies.role || null);
+  const [redirectPath, setRedirectPath] = useState<string | null>(null);
 
   const login = async (credentials: UserLogin) => {
     setIsLoading(true);
@@ -21,28 +22,34 @@ export const useLogin = () => {
       setToken(token);
       setRole(role);
 
-      // Store token & role in secure cookies
+      // Securely store token & role in cookies
       setCookie(null, 'token', token, {
         maxAge: 7 * 24 * 60 * 60, // 7 days
         path: '/',
-        secure: process.env.NODE_ENV === 'production',
+        secure: true, // Ensures it's sent over HTTPS
         sameSite: 'Strict',
+        httpOnly: false, // Ensures client can access it if needed
       });
 
       setCookie(null, 'role', role, {
         maxAge: 7 * 24 * 60 * 60, // 7 days
         path: '/',
-        secure: process.env.NODE_ENV === 'production',
+        secure: true,
         sameSite: 'Strict',
+        httpOnly: false,
       });
 
-      // Role-based redirection logic
+      console.log("Login successful, role:", role);
+
+      // Redirect based on role
       if (role === 'ADMIN') {
-        router.push('/admin');
+        router.replace('/admin');
       } else if (role === 'WAITER') {
-        router.push('/waiter');
+        router.replace('/waiter');
+      } else if (role === 'KITCHEN') {
+        router.replace('/waiter');
       } else {
-        router.push('/');
+        router.replace('/');
       }
 
       return { token, role };
@@ -59,7 +66,7 @@ export const useLogin = () => {
     destroyCookie(null, 'role');
     setToken(null);
     setRole(null);
-    router.push('/login');
+    router.replace('/login');
   };
 
   return { login, logout, isLoading, error, token, role };
