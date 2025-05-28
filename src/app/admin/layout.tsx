@@ -1,3 +1,4 @@
+// src/app/admin/layout.tsx
 "use client";
 
 import { AppSidebar } from "@/components/app-sidebar";
@@ -13,65 +14,70 @@ import { Separator } from "@/components/ui/separator";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
+import React from "react"; // Ensured React is imported
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname(); // Get the current route
+  const pathname = usePathname(); 
+
+  // Your existing breadcrumb logic
   const pathSegments = pathname
     .split("/")
     .filter((segment) => segment && segment !== "admin"); 
 
+  const breadcrumbLinks = pathSegments.map((segment, index) => {
+    // Construct the href for the link.
+    // Note: This assumes your admin sub-routes are directly under /admin/segment...
+    // If your actual URLs are /segment (without /admin prefix for links), this needs adjustment.
+    // Given pathSegments filters out "admin", the href should probably be prefixed with "/admin/"
+    const subPath = pathSegments.slice(0, index + 1).join("/");
+    const href = `/admin/${subPath}`; 
+    const isLast = index === pathSegments.length - 1;
+    // Capitalize first letter, replace hyphens with spaces
+    const formattedSegment = segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, " ");
+
+    return (
+      <React.Fragment key={href}>
+        <BreadcrumbSeparator />
+        <BreadcrumbItem>
+          {isLast ? (
+            <BreadcrumbPage>{formattedSegment}</BreadcrumbPage>
+          ) : (
+            <BreadcrumbLink asChild>
+              <Link href={href}>{formattedSegment}</Link>
+            </BreadcrumbLink>
+          )}
+        </BreadcrumbItem>
+      </React.Fragment>
+    );
+  });
+
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full flex-col md:flex-row">
+      <div className="flex min-h-screen w-full flex-col md:flex-row bg-background">
         {/* Sidebar */}
-        <AppSidebar />
+        <AppSidebar /> {/* This AppSidebar will be updated to use adminNavItems */}
 
-        {/* SidebarInset requires a single child → Wrap content in a div */}
         <SidebarInset>
           <div className="flex flex-1 flex-col">
-            {/* Header with Breadcrumbs */}
-            <header className="flex h-16 items-center gap-2 px-4 border-b transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
-              {/* Sidebar Toggle Button */}
-              <SidebarTrigger className="-ml-1" />
-              <Separator orientation="vertical" className="mr-2 h-4" />
+            <header className="flex h-16 items-center gap-2 px-4 border-b bg-card sticky top-0 z-30">
+              <SidebarTrigger className="-ml-1" /> {/* Adjusted for md:hidden */}
+              <Separator orientation="vertical" className="mr-2 h-4 md:hidden" /> {/* Adjusted for md:hidden */}
 
-              {/* Breadcrumbs Navigation */}
               <Breadcrumb>
                 <BreadcrumbList>
-                  {/* Home / Admin Link */}
                   <BreadcrumbItem>
                     <BreadcrumbLink asChild>
                       <Link href="/admin">Dashboard</Link>
                     </BreadcrumbLink>
                   </BreadcrumbItem>
-
-                  {/* Dynamically Generated Breadcrumbs */}
-                  {pathSegments.map((segment, index) => {
-                    const href = `/${pathSegments.slice(0, index + 1).join("/")}`;
-                    const isLast = index === pathSegments.length - 1;
-                    const formattedSegment = segment.replace(/-/g, " ").toUpperCase();
-
-                    return (
-                      <span key={href} className="flex items-center">
-                        <BreadcrumbSeparator />
-                        <BreadcrumbItem>
-                          {isLast ? (
-                            <BreadcrumbPage>{formattedSegment}</BreadcrumbPage>
-                          ) : (
-                            <BreadcrumbLink asChild>
-                              <Link href={href}>{formattedSegment}</Link>
-                            </BreadcrumbLink>
-                          )}
-                        </BreadcrumbItem>
-                      </span>
-                    );
-                  })}
+                  {breadcrumbLinks}
                 </BreadcrumbList>
               </Breadcrumb>
             </header>
 
-            {/* Main Content Area */}
-            <main className="flex-1 p-4 md:p-6 w-full">{children}</main>
+            <main className="flex-1 p-4 md:p-6 w-full"> {/* Added bg-muted/40 for content area */}
+              {children}
+            </main>
           </div>
         </SidebarInset>
       </div>

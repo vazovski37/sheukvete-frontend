@@ -13,22 +13,22 @@ export const getRestaurants = async (
   page: number = 0,
   size: number = 15
 ): Promise<PaginatedRestaurants> => {
-  return apiGet(API_ROUTES.SYSADMIN.RESTAURANTS.BASE, { page, size });
+  return apiGet(API_ROUTES.SYSADMIN.RESTAURANTS.GET_ALL, { page, size });
 };
 
 export const createRestaurant = async (
   data: CreateRestaurantRequest
 ): Promise<Restaurant> => {
-  return apiPost(API_ROUTES.SYSADMIN.RESTAURANTS.BASE, data);
+  return apiPost(API_ROUTES.SYSADMIN.RESTAURANTS.CREATE, data);
 };
 
 export const updateRestaurant = async (
   id: number,
   data: UpdateRestaurantRequest
 ): Promise<Restaurant> => {
-  return apiPut(API_ROUTES.SYSADMIN.RESTAURANTS.BY_ID(id), data);
+  return apiPut(API_ROUTES.SYSADMIN.RESTAURANTS.UPDATE_BY_ID(id), data);
 };
 
 export const deleteRestaurant = async (id: number): Promise<void> => {
-  return apiDelete(API_ROUTES.SYSADMIN.RESTAURANTS.BY_ID(id));
+  return apiDelete(API_ROUTES.SYSADMIN.RESTAURANTS.DELETE_BY_ID(id));
 };

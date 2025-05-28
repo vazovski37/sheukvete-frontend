@@ -8,7 +8,7 @@ export async function login({ username, password }: LoginRequest): Promise<Login
 }
 
 export async function generalLogin({ username, password }: LoginRequest): Promise<LoginResponse> {
-  const data = await apiPost(API_ROUTES.AUTH.LOGINRESTAURANTASUSER, { username, password });
+  const data = await apiPost(API_ROUTES.AUTH.LOGIN_GENERAL, { username, password });
   return data as LoginResponse;
 }
 

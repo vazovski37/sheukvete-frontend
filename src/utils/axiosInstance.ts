@@ -1,4 +1,4 @@
-import axios, { AxiosHeaders } from "axios";
+import axios, { AxiosHeaders, AxiosRequestConfig } from "axios";
 import { parseCookies } from "nookies";
 import { triggerLogout } from "@/utils/logoutHandler";
 
@@ -29,7 +29,7 @@ const attachTokenInterceptor = (instance: typeof axiosInstance) => {
   instance.interceptors.request.use(
     (config) => {
       const cookies = parseCookies();
-      const token = cookies["RESTAURANT_JWT"];
+      const token = cookies["token"];
       console.log(token)
       if (token) {
         // Axios v1+ uses AxiosHeaders, so mutate instead of replace
@@ -76,8 +76,8 @@ export const apiPost = async (url: string, data?: any): Promise<any> => {
   return axiosInstance.post(url, data).then((res) => res.data);
 };
 
-export const apiGet = async (url: string, params?: any): Promise<any> => {
-  return axiosInstance.get(url, { params }).then((res) => res.data);
+export const apiGet = async <T = any>(url: string, params?: any, config?: AxiosRequestConfig): Promise<T> => {
+  return axiosInstance.get<T>(url, { ...config, params }).then((res) => res.data);
 };
 
 export const apiPut = async (url: string, data?: any): Promise<any> => {
