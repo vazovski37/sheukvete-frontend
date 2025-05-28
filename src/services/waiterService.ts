@@ -8,8 +8,11 @@ import {
   MoveOrderRequest, 
   PartialPaymentRequest 
 } from "@/types/waiter";
-import { OrderResponse, Order, OrderRequestItem } from "@/types/order";
+import { OrderResponse, Order, OrderRequestItem, WaiterOrder } from "@/types/order";
 import { WaiterFoodResponse } from "@/types/waiter/food";
+import { apiDelete, apiPost, apiGet} from "@/utils/axiosInstance";
+import API_ROUTES from "@/constants/apiRoutes";
+import { array } from "zod";
 
 // Fetch all waiters
 export const fetchWaiters = async (): Promise<Waiter[]> => {
@@ -51,8 +54,12 @@ export const fetchOrderByTable = async (tableId: number): Promise<Order> => {
 };
 
 // Create or update an order for a table
-export const updateOrder = async (tableId: number, items: OrderRequestItem[]): Promise<void> => {
-  await apiClient.post(`/waiter/orders/${tableId}`, { items }); // Wrap items in an object
+export const updateOrder = async (
+  tableId: number,
+  items: OrderRequestItem[]
+): Promise<void> => {
+  // ✅ send array directly, NOT { items: [...] }
+  await apiPost(API_ROUTES.WAITER.CREATE_OR_UPDATE_ORDER(tableId), items);
 };
 
 
@@ -68,9 +75,12 @@ export const payFullOrder = async (tableId: number): Promise<void> => {
 
 // Pay for partial order items
 export const payPartialOrder = async (tableId: number, items: PartialPaymentRequest[]): Promise<void> => {
-  await apiClient.post(`/waiter/orders/${tableId}/items`, { items }); // Use POST for better compatibility
+  await apiDelete(API_ROUTES.WAITER.DELETE_PARTIAL_ITEMS(tableId), items ); // Use POST for better compatibility
 };
 
+export const fetchWaiterOrders = async (): Promise<{ orders: WaiterOrder[] }> => {
+  return apiGet(API_ROUTES.WAITER.GET_ORDER_HISTORY);
+};
 // Fetch available foods for waiters
 export const fetchFoodsForWaiters = async (): Promise<WaiterFoodResponse> => {
   const response = await apiClient.get<WaiterFoodResponse>("/waiter/orders");

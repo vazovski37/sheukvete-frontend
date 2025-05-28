@@ -14,25 +14,19 @@ export default function AddFoodPage() {
   const router = useRouter();
   const [foodName, setFoodName] = useState("");
   const [price, setPrice] = useState("");
-  const [categoryType, setCategoryType] = useState<CategoryType | undefined>(); // Use `undefined` instead of empty string
+  const [categoryType, setCategoryType] = useState<CategoryType | undefined>();
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
 
-  // Fetch all categories
   const { categories, loading } = useCategories();
   const { handleAddFood } = useFoods();
 
-  // Filter categories dynamically based on selected type
   const filteredCategories = categoryType
-    ? categories.filter((cat) => cat.type === (categoryType === "MEAL" ? "MEAL" : "DRINK"))
+    ? categories.filter((cat) => cat.type === categoryType)
     : [];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!selectedCategory) {
-      alert("Please select a category.");
-      return;
-    }
+    if (!selectedCategory) return alert("Please select a category.");
 
     await handleAddFood({
       name: foodName,
@@ -44,27 +38,32 @@ export default function AddFoodPage() {
   };
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Add New Food Item</h1>
+    <div className="p-4 sm:p-6 max-w-md mx-auto space-y-6">
+      <div className="flex flex-row justify-between items-center">
+        <Button size="sm" variant="outline" onClick={() => router.back()}>
+          ← Back
+        </Button>
+        <h1 className="text-xl font-bold mt-4"> Add New Food</h1>
+      </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Select Food Type */}
-        <div>
+      <form onSubmit={handleSubmit} className="space-y-4 text-sm">
+        {/* Food Type */}
+        <div className="space-y-1">
           <Label>Food Type</Label>
           <Select value={categoryType ?? ""} onValueChange={(value) => setCategoryType(value as CategoryType)}>
             <SelectTrigger>
               <SelectValue placeholder="Select Type" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="MEALS">Meals</SelectItem>
-              <SelectItem value="DRINKS">Drinks</SelectItem>
+              <SelectItem value="MEAL">Meals</SelectItem>
+              <SelectItem value="DRINK">Drinks</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
-        {/* Select Category (Filtered by Type) */}
+        {/* Category */}
         {categoryType && (
-          <div>
+          <div className="space-y-1">
             <Label>Category</Label>
             <Select
               value={selectedCategory ? selectedCategory.toString() : ""}
@@ -89,21 +88,35 @@ export default function AddFoodPage() {
           </div>
         )}
 
-        {/* Input for Food Name */}
-        <div>
+        {/* Food Name */}
+        <div className="space-y-1">
           <Label>Food Name</Label>
-          <Input type="text" value={foodName} onChange={(e) => setFoodName(e.target.value)} required />
+          <Input
+            type="text"
+            value={foodName}
+            onChange={(e) => setFoodName(e.target.value)}
+            required
+            placeholder="e.g. Cheeseburger"
+          />
         </div>
 
-        {/* Input for Price */}
-        <div>
+        {/* Price */}
+        <div className="space-y-1">
           <Label>Price ($)</Label>
-          <Input type="number" value={price} onChange={(e) => setPrice(e.target.value)} required />
+          <Input
+            type="number"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            required
+            placeholder="e.g. 4.99"
+            min="0"
+            step="0.01"
+          />
         </div>
 
-        {/* Submit Button */}
-        <Button type="submit" disabled={!categoryType || !selectedCategory}>
-          Add Food
+        {/* Submit */}
+        <Button type="submit" className="w-full" disabled={!categoryType || !selectedCategory}>
+          ✅ Add Food
         </Button>
       </form>
     </div>

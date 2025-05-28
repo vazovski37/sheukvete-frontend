@@ -25,7 +25,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { useLogin } from "@/hooks/useLogin"; // Import login hook
+import { useLogout } from "@/features/auth/hooks/useLogout"; // Import login hook
 import { ThemeToggle } from "./theme-toggle";
 
 export function NavUser({
@@ -38,7 +38,7 @@ export function NavUser({
   };
 }) {
   const { isMobile } = useSidebar();
-  const { logout } = useLogin(); // Get logout function from useLogin hook
+  const { logout, isPending  } = useLogout();
 
   return (
     <SidebarMenu>
@@ -105,9 +105,13 @@ export function NavUser({
               <ThemeToggle />
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={logout} className="cursor-pointer">
+            <DropdownMenuItem
+              onClick={() => logout()}
+              disabled={isPending}
+              className="cursor-pointer"
+            >
               <LogOut />
-              Log out
+              {isPending ? "Logging out..." : "Log out"}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

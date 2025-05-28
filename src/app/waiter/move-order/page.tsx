@@ -6,12 +6,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useState } from "react";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export default function MoveOrderPage() {
   const { occupiedTables, tables, handleMoveOrder } = useOrdersManagement(); // Fetch all tables
   const [sourceTable, setSourceTable] = useState<number | null>(null);
   const [targetTable, setTargetTable] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   const handleMove = async () => {
     if (!sourceTable || !targetTable || sourceTable === targetTable) {
@@ -35,6 +37,10 @@ export default function MoveOrderPage() {
   return (
     <div className="p-6 max-w-lg mx-auto">
       <h1 className="text-2xl font-bold mb-6 text-center">🔄 Move Order</h1>
+
+      <Button variant="secondary" onClick={() => router.push("/waiter")}>
+          🔙 Back to Dashboard
+        </Button>
 
       <div className="space-y-6">
         {/* Select Source Table */}

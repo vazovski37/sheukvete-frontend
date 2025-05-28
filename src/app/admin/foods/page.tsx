@@ -12,50 +12,58 @@ export default function FoodsPage() {
   const { foods, loading, handleDeleteFood } = useFoods();
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Foods & Drinks</h1>
-
-      <Button className="mb-4" onClick={() => router.push("/admin/foods/add")}>
-        + Add New Food
-      </Button>
+    <div className="p-4 sm:p-6 space-y-6">
+      <div className="flex flex-row sm:flex-row justify-between items-start sm:items-center gap-4">
+        <h1 className="text-lg sm:text-2xl font-bold">Foods & Drinks</h1>
+        <Button size="sm" onClick={() => router.push("/admin/foods/add")}>
+          + Add New Food
+        </Button>
+      </div>
 
       {loading ? (
-        <p>Loading...</p>
+        <p className="text-sm text-muted-foreground">Loading...</p>
       ) : (
-        <div className="flex flex-wrap gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {foods.map((categoryData: FoodData, index: number) => (
-            <Card key={index} className="w-full md:w-[48%] lg:w-[32%]">
-              <CardHeader>
-                <CardTitle className="text-lg font-semibold">
-                  {categoryData.type === "MEAL" ? "🍽️ Meal" : "🥤 Drink"} - {categoryData.category.name}
+            <Card key={index}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm sm:text-base font-semibold">
+                  {categoryData.type === "MEAL" ? "🍽️ Meal" : "🥤 Drink"} – {categoryData.category.name}
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="overflow-x-auto px-2">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Price</TableHead>
-                      <TableHead>Comments</TableHead>
-                      <TableHead>Actions</TableHead>
+                      <TableHead className="text-xs">Name</TableHead>
+                      <TableHead className="text-xs">Price</TableHead>
+                      <TableHead className="text-xs">Comments</TableHead>
+                      <TableHead className="text-xs">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {categoryData.category.food.map((food) => (
                       <TableRow key={food.id}>
-                        <TableCell>{food.name}</TableCell>
-                        <TableCell>${food.price.toFixed(2)}</TableCell>
-                        <TableCell>
-                          {food.comment1 && <p>📝 {food.comment1}</p>}
-                          {food.comment2 && <p>📝 {food.comment2}</p>}
-                          {food.comment3 && <p>📝 {food.comment3}</p>}
-                          {food.comment4 && <p>📝 {food.comment4}</p>}
+                        <TableCell className="text-sm">{food.name}</TableCell>
+                        <TableCell className="text-sm">${food.price.toFixed(2)}</TableCell>
+                        <TableCell className="text-xs space-y-1">
+                          {[food.comment1, food.comment2, food.comment3, food.comment4].filter(Boolean).map((c, i) => (
+                            <p key={i}>📝 {c}</p>
+                          ))}
                         </TableCell>
-                        <TableCell>
-                          <Button variant="outline" onClick={() => router.push(`/admin/foods/edit/${food.id}`)}>
+                        <TableCell className="flex flex-col gap-1 text-xs">
+                          {/* <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => router.push(`/admin/foods/edit/${food.id}`)}
+                          >
                             Edit
-                          </Button>
-                          <Button variant="destructive" onClick={() => handleDeleteFood(food.id)}>
+                          </Button> */}
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleDeleteFood(food.id)}
+                          >
                             Delete
                           </Button>
                         </TableCell>

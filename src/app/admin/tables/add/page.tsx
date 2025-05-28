@@ -19,14 +19,34 @@ export default function AddTablePage() {
   };
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Add New Table</h1>
+    <div className="p-4 sm:p-6 max-w-md mx-auto space-y-6">
+      <div className="flex justify-between gap-4">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => router.push("/admin/tables")}
+        >
+          ← back
+        </Button>
+        <h1 className="text-lg sm:text-xl font-bold">Add New Table</h1>
+      </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <Label>Table Number</Label>
-        <Input type="number" value={tableNumber} onChange={(e) => setTableNumber(e.target.value)} required />
+        <div className="space-y-2">
+          <Label htmlFor="tableNumber">Table Number</Label>
+          <Input
+            id="tableNumber"
+            type="number"
+            value={tableNumber}
+            onChange={(e) => setTableNumber(e.target.value)}
+            required
+            className="text-sm"
+          />
+        </div>
 
-        <Button type="submit">Add Table</Button>
+        <Button type="submit" className="w-full sm:w-auto">
+          Add Table
+        </Button>
       </form>
     </div>
   );

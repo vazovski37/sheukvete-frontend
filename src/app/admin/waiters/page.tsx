@@ -10,35 +10,52 @@ export default function WaitersPage() {
   const { waiters, loading, handleDeleteWaiter } = useWaiters();
 
   return (
-    <div className="p-6 w-full">
-      <h1 className="text-2xl font-bold mb-4">Waiters</h1>
+    <div className="p-4 sm:p-6 space-y-4 w-full">
+      <div className="flex flex-row sm:flex-row justify-between items-start sm:items-center gap-4">
+        <h1 className="text-xl sm:text-2xl font-bold">👨‍🍳 Waiters</h1>
+        <Button size="sm" onClick={() => router.push("/admin/waiters/add")}>
+          + Add New Waiter
+        </Button>
+      </div>
 
-      <Button className="mb-4" onClick={() => router.push("/admin/waiters/add")}>
-        + Add New Waiter
-      </Button>
-
-      {loading ? <p>Loading...</p> : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Username</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {waiters.map((waiter) => (
-              <TableRow key={waiter.id}>
-                <TableCell>{waiter.username}</TableCell>
-                <TableCell>{waiter.role}</TableCell>
-                <TableCell>
-                  <Button onClick={() => router.push(`/admin/waiters/edit/${waiter.id}`)}>Edit</Button>
-                  <Button variant="destructive" onClick={() => handleDeleteWaiter(waiter.id)}>Delete</Button>
-                </TableCell>
+      {loading ? (
+        <p className="text-sm text-muted-foreground">Loading...</p>
+      ) : (
+        <div className="overflow-x-auto rounded border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="text-xs sm:text-sm">Username</TableHead>
+                <TableHead className="text-xs sm:text-sm">Role</TableHead>
+                <TableHead className="text-xs sm:text-sm">Actions</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {waiters.map((waiter) => (
+                <TableRow key={waiter.id}>
+                  <TableCell className="text-sm">{waiter.username}</TableCell>
+                  <TableCell className="text-sm">{waiter.role}</TableCell>
+                  <TableCell className="flex flex-col sm:flex-row gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => router.push(`/admin/waiters/edit/${waiter.id}`)}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleDeleteWaiter(waiter.id)}
+                    >
+                      Delete
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
     </div>
   );

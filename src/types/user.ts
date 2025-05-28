@@ -8,3 +8,9 @@ export interface UserLogin {
     token: string;
   }
   
+export interface UserS {
+  id: number;
+  username: string;
+  role: string; // Add other roles as needed
+  active: boolean;
+}

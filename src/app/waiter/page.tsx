@@ -8,108 +8,128 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2 } from "lucide-react";
-import { useLogin } from "@/hooks/useLogin";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { useLogout } from "@/features/auth/hooks/useLogout";
 
 export default function WaiterDashboard() {
   const { tables, occupiedTables, loading } = useOrdersManagement();
   const router = useRouter();
   const [filter, setFilter] = useState<"ALL" | "AVAILABLE" | "OCCUPIED">("ALL");
-  const { logout } = useLogin();
-  // Filter logic for tables
+  const { logout, isPending } = useLogout();
+
   const filteredTables = tables.filter((table) => {
     if (filter === "AVAILABLE") return !occupiedTables.some((t) => t.id === table.id);
     if (filter === "OCCUPIED") return occupiedTables.some((t) => t.id === table.id);
-    return true; // "ALL" - return everything
+    return true;
   });
 
   return (
-    <div className="p-6">
-      <div className="flex flex-row justify-between">
-      <h1 className="text-3xl font-bold mb-6">Waiter Dashboard</h1>
-      <div className="flex space-x-4">
-      <ThemeToggle></ThemeToggle>
-      <Button onClick={logout} > logout </Button>
-      </div>
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>📌 Total Tables</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{loading ? <Loader2 className="animate-spin" /> : tables.length}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>🍽️ Occupied Tables</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{loading ? <Loader2 className="animate-spin" /> : occupiedTables.length}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>📝 Active Orders</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{loading ? <Loader2 className="animate-spin" /> : occupiedTables.length}</p>
-          </CardContent>
-        </Card>
+    <div className="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto">
+      <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-3">
+        <h1 className="text-base sm:text-2xl font-bold whitespace-nowrap">🧑‍🍳 Waiter Dashboard</h1>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <Button onClick={() => logout()} disabled={isPending}>
+            Logout
+          </Button>
+        </div>
       </div>
 
-      <Separator className="my-4" />
 
-      {/* Tabs for Table Filters */}
-      <Tabs defaultValue="ALL" onValueChange={(value) => setFilter(value as "ALL" | "AVAILABLE" | "OCCUPIED")}>
-        <TabsList className="mb-4 flex gap-4">
+
+<div className="grid grid-cols-2 gap-4">
+  {/* First card spans two columns always */}
+  <div className="col-span-2">
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm font-semibold">Total Tables</CardTitle>
+      </CardHeader>
+      <CardContent className="text-2xl font-bold h-10 flex items-center">
+        {loading ? <Loader2 className="animate-spin size-6" /> : tables.length}
+      </CardContent>
+    </Card>
+  </div>
+
+  {/* Second Card */}
+  <Card>
+    <CardHeader>
+      <CardTitle className="text-sm font-semibold">Occupied Tables</CardTitle>
+    </CardHeader>
+    <CardContent className="text-2xl font-bold h-10 flex items-center">
+      {loading ? <Loader2 className="animate-spin size-6" /> : occupiedTables.length}
+    </CardContent>
+  </Card>
+
+  {/* Third Card */}
+  <Card>
+    <CardHeader>
+      <CardTitle className="text-sm font-semibold">Active Orders</CardTitle>
+    </CardHeader>
+    <CardContent className="text-2xl font-bold h-10 flex items-center">
+      {loading ? <Loader2 className="animate-spin size-6" /> : occupiedTables.length}
+    </CardContent>
+  </Card>
+</div>
+
+
+
+
+      <Separator />
+
+      {/* Table Filters */}
+      <Tabs defaultValue="ALL" onValueChange={(v) => setFilter(v as typeof filter)}>
+        <TabsList className="flex w-full sm:w-auto gap-2 overflow-x-auto">
           <TabsTrigger value="ALL">All Tables</TabsTrigger>
-          <TabsTrigger value="AVAILABLE">Available Tables</TabsTrigger>
-          <TabsTrigger value="OCCUPIED">Occupied Tables</TabsTrigger>
+          <TabsTrigger value="AVAILABLE">Available</TabsTrigger>
+          <TabsTrigger value="OCCUPIED">Occupied</TabsTrigger>
         </TabsList>
 
         <TabsContent value={filter}>
           {loading ? (
-            <div className="flex justify-center my-6">
-              <Loader2 className="animate-spin size-8" />
+            <div className="flex justify-center py-8">
+              <Loader2 className="animate-spin size-6" />
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 mt-4">
               {filteredTables.map((table) => {
                 const isOccupied = occupiedTables.some((t) => t.id === table.id);
                 return (
-                  <Card key={table.id} className="p-4 shadow-md">
-                    <CardHeader>
-                      <CardTitle className="text-lg">Table {table.tableNumber}</CardTitle>
+                  <Card key={table.id} className="p-4 space-y-3">
+                    <CardHeader className="p-0">
+                      <CardTitle className="text-base font-medium">
+                        🍽 Table #{table.tableNumber}
+                      </CardTitle>
                     </CardHeader>
-                    <CardContent>
-                      <p className={`text-lg font-semibold ${isOccupied ? "text-red-500" : "text-green-500"}`}>
+                    <CardContent className="space-y-3 p-0">
+                      <p
+                        className={`text-sm font-semibold ${
+                          isOccupied ? "text-red-500" : "text-green-600"
+                        }`}
+                      >
                         {isOccupied ? "Occupied" : "Available"}
                       </p>
-
-                      <div className="mt-4 flex flex-col gap-2">
+                      <div className="flex flex-col gap-2">
                         {isOccupied ? (
                           <>
                             <Button
-                              variant="outline"
-                              onClick={() => router.push(`/waiter/orders/${table.id}`)}
+                              size="sm"
+                              onClick={() => router.push(`/waiter/orders/view/${table.id}`)}
                             >
                               View Order
                             </Button>
                             <Button
-                              variant="destructive"
-                              onClick={() => router.push(`/waiter/pay/${table.id}`)}
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => router.push(`/waiter/orders/update/${table.id}`)}
                             >
-                              Pay & Close Order
+                              Add Items
                             </Button>
                           </>
                         ) : (
-                          <Button onClick={() => router.push(`/waiter/orders/${table.id}`)}>
+                          <Button
+                            size="sm"
+                            onClick={() => router.push(`/waiter/orders/update/${table.id}`)}
+                          >
                             Start Order
                           </Button>
                         )}
@@ -123,9 +143,18 @@ export default function WaiterDashboard() {
         </TabsContent>
       </Tabs>
 
-      <div className="mt-6 flex justify-between">
-        <Button onClick={() => router.push("/waiter/move-order")}>Move Order</Button>
-        <Button variant="secondary" onClick={() => router.push("/waiter/orders")}>View All Orders</Button>
+      {/* Bottom Actions */}
+      <div className="flex flex-col sm:flex-row justify-between gap-4 mt-6">
+        <Button className="w-full sm:w-auto" onClick={() => router.push("/waiter/move-order")}>
+          🔀 Move Order
+        </Button>
+        <Button
+          className="w-full sm:w-auto"
+          variant="secondary"
+          onClick={() => router.push("/waiter/orders/history")}
+        >
+          📜 View All Orders
+        </Button>
       </div>
     </div>
   );

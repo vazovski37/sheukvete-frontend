@@ -12,13 +12,11 @@ export default function AddCategoryPage() {
   const router = useRouter();
   const [categoryName, setCategoryName] = useState("");
   const [categoryType, setCategoryType] = useState<"MEAL" | "DRINK">("MEAL");
-
-  // ✅ Call useCategories() without arguments
-  const { handleAddCategory } = useCategories(); 
+  const { handleAddCategory } = useCategories();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!categoryName.trim()) {
       alert("Category name cannot be empty.");
       return;
@@ -29,18 +27,27 @@ export default function AddCategoryPage() {
   };
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Add New Category</h1>
+    <div className="p-4 sm:p-6 space-y-6">
+      <div className="flex flex-row justify-between items-center">
+        <Button size="sm" variant="outline" onClick={() => router.push("/admin/categories")}>
+          ← Back
+        </Button>
+        <h1 className="text-xl sm:text-2xl font-bold"> Add New Category</h1>
+      </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Input for Category Name */}
-        <div>
+      <form onSubmit={handleSubmit} className="space-y-4 text-sm sm:text-base">
+        <div className="space-y-1">
           <Label>Category Name</Label>
-          <Input type="text" value={categoryName} onChange={(e) => setCategoryName(e.target.value)} required />
+          <Input
+            type="text"
+            value={categoryName}
+            onChange={(e) => setCategoryName(e.target.value)}
+            required
+            placeholder="e.g. Salads, Soft Drinks..."
+          />
         </div>
 
-        {/* Select for Category Type */}
-        <div>
+        <div className="space-y-1">
           <Label>Category Type</Label>
           <Select value={categoryType} onValueChange={(value) => setCategoryType(value as "MEAL" | "DRINK")}>
             <SelectTrigger>
@@ -53,8 +60,9 @@ export default function AddCategoryPage() {
           </Select>
         </div>
 
-        {/* Submit Button */}
-        <Button type="submit">Add Category</Button>
+        <Button type="submit" className="w-full sm:w-auto">
+           Add Category
+        </Button>
       </form>
     </div>
   );
