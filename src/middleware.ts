@@ -19,6 +19,14 @@ export function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL('/', req.url));
   }
 
+  if (req.nextUrl.pathname.startsWith('/staff') && role !== 'STAFF') {
+    return NextResponse.redirect(new URL('/', req.url));
+  }
+
+    if (req.nextUrl.pathname.startsWith('/sysadmin') && role !== 'SYSADMIN') {
+    return NextResponse.redirect(new URL('/', req.url));
+  }
+
   // Allow access
   return NextResponse.next();
 }

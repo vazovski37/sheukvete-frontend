@@ -2,9 +2,10 @@
 
 const API_ROUTES = {
   AUTH: {
-    LOGIN: "/auth/login", // Used for Restaurant/SystemAdmin login via apiTPost
-    LOGIN_GENERAL: "/auth/general/login", // Used for Admin, Waiter, Staff, Kitchen login via apiPost
-    LOGOUT: "/auth/logout",
+    LOGIN: "/auth/login",
+    LOGIN_GENERAL: "/auth/general/login",
+    LOGOUT: "/auth/logout", // User-level logout (clears "token" cookie)
+    LOGOUT_RESTAURANT: "/auth/restaurant/logout", // Restaurant-level logout (clears "RESTAURANT_JWT" cookie)
   },
   ADMIN: {
     CATEGORIES: {

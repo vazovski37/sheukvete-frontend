@@ -1,73 +1,66 @@
-import axios, { AxiosHeaders, AxiosRequestConfig } from "axios";
-import { parseCookies } from "nookies";
-import { triggerLogout } from "@/utils/logoutHandler";
+// src/utils/axiosInstance.ts
 
-const baseURL = process.env.NEXT_PUBLIC_BACKEND_URL;
+import axios, { AxiosRequestConfig } from "axios";
+import { triggerLogout } from "@/utils/logoutHandler"; //
 
-// Create Axios Instances
+const PROXY_BASE_URL = "/api/proxy";
+
+// axiosInstance: Used for most user-level authenticated calls (implicitly uses "token" cookie)
 const axiosInstance = axios.create({
-  baseURL,
+  baseURL: PROXY_BASE_URL,
   headers: {
     "X-Requested-With": "XMLHttpRequest",
     "Content-Type": "application/json",
   },
-  withCredentials: true,
+  withCredentials: true, // Crucial for sending HttpOnly cookies to the proxy
 });
 
+// axiosInstanceT: Used by apiTPost for the initial restaurant/sysadmin login call.
+// It does NOT send any token, as the initial login is public.
+// Its X-TenantID header will be forwarded by the proxy.
 const axiosInstanceT = axios.create({
-  baseURL,
+  baseURL: PROXY_BASE_URL,
   headers: {
     "X-Requested-With": "XMLHttpRequest",
     "Content-Type": "application/json",
-    "X-TenantID": "main",
+    "X-TenantID": "main", // This header will be forwarded by the proxy
   },
-  withCredentials: true,
+  withCredentials: true, // Crucial for sending HttpOnly cookies to the proxy
 });
 
-// Token Setter Interceptor (applies to both instances)
-const attachTokenInterceptor = (instance: typeof axiosInstance) => {
-  instance.interceptors.request.use(
-    (config) => {
-      const cookies = parseCookies();
-      const token = cookies["token"];
-      console.log(token)
-      if (token) {
-        // Axios v1+ uses AxiosHeaders, so mutate instead of replace
-        if (
-          config.headers &&
-          typeof config.headers === "object" &&
-          "set" in config.headers &&
-          typeof config.headers.set === "function"
-        ) {
-          config.headers.set("Authorization", `Bearer ${token}`);
-        }
-      }
-      return config;
-    },
-    (error) => Promise.reject(error)
-  );
-};
-
-
-// Response Interceptor (handles token expiration)
+// Response Interceptor (handles token expiration from backend response)
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
     const message = error.response?.data?.message;
+    // Check for expiration of the user-level "token"
     if (message?.includes("Token has expired")) {
-      console.warn("🔐 Token expired. Logging out...");
+      console.warn("🔐 User-level token expired. Logging out...");
       triggerLogout();
     }
     return Promise.reject(error);
   }
 );
 
-// Apply request interceptors to both instances
-attachTokenInterceptor(axiosInstance);
-attachTokenInterceptor(axiosInstanceT);
+// Apply response interceptor to axiosInstanceT as well, for its specific use case (though it's less likely to receive token expiry for the initial login response itself)
+axiosInstanceT.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const message = error.response?.data?.message;
+    // Check for expiration of RESTAURANT_JWT if backend sends specific message for it
+    if (message?.includes("RESTAURANT_JWT expired") || message?.includes("Token has expired")) {
+      console.warn("🔐 RESTAURANT_JWT or generic token expired. Logging out...");
+      // Trigger logout handler to clear both relevant cookies
+      triggerLogout(); // This handler should clear both "token" and "RESTAURANT_JWT"
+    }
+    return Promise.reject(error);
+  }
+);
+
 
 // --- API Methods ---
-
+// These methods will now automatically send requests to /api/proxy.
+// The proxy will determine which HttpOnly cookie to attach based on the route.
 export const apiTPost = async (url: string, data?: any): Promise<any> => {
   return axiosInstanceT.post(url, data).then((res) => res.data);
 };
@@ -98,18 +91,12 @@ export const apiGetBlob = async (
   url: string,
   acceptType: string = "application/pdf"
 ): Promise<Blob> => {
-  const cookies = parseCookies();
-  const token = cookies["api_token"];
-
-  return axios.get(url, {
-    baseURL,
+  return axiosInstance.get(url, {
     responseType: "blob",
     headers: {
       "X-Requested-With": "XMLHttpRequest",
-      Authorization: `Bearer ${token}`,
       Accept: acceptType,
     },
-    withCredentials: true,
   }).then((res) => res.data);
 };
 

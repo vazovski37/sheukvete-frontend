@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { KitchenOrder } from "../types";
 import { format } from "date-fns";
-import { toggleCookingStatus, printKitchenItems } from "../kitchenApi";
+import { toggleCookingStatus, printKitchenItems } from "../api";
 import { useTransition, useState } from "react";
 import clsx from "clsx";
 

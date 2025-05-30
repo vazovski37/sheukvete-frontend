@@ -2,7 +2,7 @@
 'use client'
 
 import { useEffect, useState } from "react";
-import { getKitchenOrders} from "../kitchenApi";
+import { getKitchenOrders} from "../api";
 import { KitchenOrder } from "../types";
 
 export function useKitchenOrders() {

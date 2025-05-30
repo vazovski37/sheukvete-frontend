@@ -3,11 +3,11 @@ import { apiGet, apiPost, apiPut } from "@/utils/axiosInstance";
 import { KitchenOrder } from "./types";
 
 export const getKitchenOrders = async (): Promise<KitchenOrder[]> => {
-  return apiGet(API_ROUTES.KITCHEN.ORDERS);
+  return apiGet(API_ROUTES.KITCHEN.GET_ORDERS);
 };
 
 export const toggleCookingStatus = async (tableId: number): Promise<void> => {
-  return apiPut(`${API_ROUTES.KITCHEN.ORDERS}/${tableId}/isCooking`);
+  return apiPut(`${API_ROUTES.KITCHEN.TOGGLE_COOKING_STATUS}/${tableId}/isCooking`);
 };
 
 export const printKitchenItems = async ({
@@ -17,5 +17,5 @@ export const printKitchenItems = async ({
   tableId: number;
   orderItemIds: number[];
 }): Promise<void> => {
-  return apiPost(`/api/kitchen/orders/print`, { tableId, orderItemIds });
+  return apiPost(API_ROUTES.KITCHEN.PRINT_ITEMS, { tableId, orderItemIds });
 };

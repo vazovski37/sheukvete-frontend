@@ -75,7 +75,7 @@ export const payFullOrder = async (tableId: number): Promise<void> => {
 
 // Pay for partial order items
 export const payPartialOrder = async (tableId: number, items: PartialPaymentRequest[]): Promise<void> => {
-  await apiDelete(API_ROUTES.WAITER.DELETE_PARTIAL_ITEMS(tableId), items ); // Use POST for better compatibility
+  await apiDelete(API_ROUTES.WAITER.DELETE_PARTIAL_ORDER_ITEMS(tableId), items ); // Use POST for better compatibility
 };
 
 export const fetchWaiterOrders = async (): Promise<{ orders: WaiterOrder[] }> => {
