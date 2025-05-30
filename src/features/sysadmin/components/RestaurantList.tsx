@@ -1,3 +1,4 @@
+// src/features/sysadmin/components/RestaurantList.tsx
 "use client";
 
 import {
@@ -15,11 +16,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import type { Restaurant } from "../types";
+import { useLogout } from "@/features/auth/hooks/useLogout"; // Import the logout hook
+import { LogOut } from "lucide-react"; // Import a logout icon
 
 export default function RestaurantList() {
   const { data, isLoading, isError } = useRestaurants();
   const createMutation = useCreateRestaurant();
   const deleteMutation = useDeleteRestaurant();
+  const { logout, isPending: isLoggingOut } = useLogout(); // Destructure logout and its pending state
 
   const [newName, setNewName] = useState("");
   const [password, setPassword] = useState("");
@@ -47,6 +51,14 @@ export default function RestaurantList() {
 
   return (
     <div className="grid gap-6 max-w-2xl mx-auto mt-10 w-full">
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-bold">System Admin Dashboard</h1>
+        <Button onClick={() => logout()} disabled={isLoggingOut} variant="outline">
+          <LogOut className="mr-2 h-4 w-4" /> {/* Logout icon */}
+          {isLoggingOut ? "Logging out..." : "Logout"}
+        </Button>
+      </div>
+
       <Card>
         <CardHeader>
           <CardTitle>Create New Restaurant</CardTitle>

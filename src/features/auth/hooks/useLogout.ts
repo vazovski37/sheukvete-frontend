@@ -3,38 +3,36 @@
 import { useMutation } from "@tanstack/react-query";
 import { destroyCookie } from "nookies";
 import { useRouter } from "next/navigation";
-import API_ROUTES from "@/constants/apiRoutes"; //
-import { apiPost } from "@/utils/axiosInstance"; //
-import { useUserStore } from "@/stores/userStore"; // Import user store to clear Zustand state
+import API_ROUTES from "@/constants/apiRoutes";
+import { apiPost } from "@/utils/axiosInstance";
+import { useUserStore } from "@/stores/userStore";
 
 export const useLogout = () => {
   const router = useRouter();
-  const logoutUserStore = useUserStore((state) => state.logout); // Get Zustand logout action
+  const logoutUserStore = useUserStore((state) => state.logout);
 
   const mutation = useMutation({
     mutationFn: async () => {
       // Call backend logout endpoints
-      // It's good practice to invalidate cookies on the backend even if HttpOnly
-      // Call endpoint to clear user-level token
+      // Note: If backend doesn't have an endpoint to clear the 'token' cookie,
+      // the client-side destroyCookie is critical here.
       try {
-        await apiPost(API_ROUTES.AUTH.LOGOUT); // This will hit /api/proxy/auth/logout, which clears "token" cookie
+        await apiPost(API_ROUTES.AUTH.LOGOUT); // This might be for user-level token cleanup on backend
       } catch (error) {
-        console.warn("User-level logout API call failed (might already be logged out):", error);
+        console.warn("User-level logout API call failed (might already be logged out or endpoint not found):", error);
       }
 
-      // If restaurant-level token also needs to be cleared from frontend logout:
-      // (This assumes a separate endpoint for clearing RESTAURANT_JWT)
       try {
-        await apiPost(API_ROUTES.AUTH.LOGOUT_RESTAURANT); // This will hit /api/proxy/auth/restaurant/logout
+        await apiPost(API_ROUTES.AUTH.LOGOUT_RESTAURANT); // This clears RESTAURANT_JWT on backend
       } catch (error) {
-        console.warn("Restaurant-level logout API call failed (might already be logged out):", error);
+        console.warn("Restaurant-level logout API call failed (might already be logged out or endpoint not found):", error);
       }
 
-      // Clear cookies from the client-side as well, though HttpOnly makes them inaccessible to JS directly,
-      // destroying them ensures Next.js's server-side cookie parsing sees them as gone.
+      // Clear cookies from the client-side.
+      // Since 'token' is now set by JS, it can be destroyed by JS.
       destroyCookie(null, "token", { path: '/' }); // Clear user-level token cookie
-      destroyCookie(null, "role", { path: '/' }); // Clear role cookie
-      destroyCookie(null, "RESTAURANT_JWT", { path: '/' }); // Clear restaurant-level token cookie
+      destroyCookie(null, "role", { path: '/' }); // Clear role cookie (non-HttpOnly)
+      destroyCookie(null, "RESTAURANT_JWT", { path: '/' }); // Clear restaurant-level token cookie (HttpOnly, but good to try destroying)
 
       // Clear Zustand user store
       logoutUserStore();

@@ -2,66 +2,131 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
-import { parseCookies } from 'nookies'; //
-import API_ROUTES from '@/constants/apiRoutes'; //
+// import { parseCookies } from 'nookies'; // We will bypass nookies for direct extraction
+import API_ROUTES from '@/constants/apiRoutes';
 
 const BACKEND_API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
-// List of routes that do NOT require any authentication token in the Authorization header
 const PUBLIC_ROUTES = [
-  API_ROUTES.AUTH.LOGIN, // The very first login (Restaurant/SysAdmin)
-  // No other public routes should be here if they are behind any auth
+  API_ROUTES.AUTH.LOGIN,
 ];
 
-export async function handler(req: NextRequest) {
+// Helper function to manually parse cookies from the request header
+function parseCookiesManual(request: NextRequest): Record<string, string> {
+  const cookieHeader = request.headers.get('Cookie');
+  const cookies: Record<string, string> = {};
+  if (cookieHeader) {
+    cookieHeader.split(';').forEach(cookie => {
+      const parts = cookie.split('=');
+      if (parts.length > 1) {
+        const name = parts[0].trim();
+        const value = parts.slice(1).join('=').trim();
+        cookies[name] = value;
+      }
+    });
+  }
+  return cookies;
+}
+
+
+// Define each HTTP method handler directly as a named export
+export async function GET(req: NextRequest) {
+  return handleRequest(req);
+}
+
+export async function POST(req: NextRequest) {
+  return handleRequest(req);
+}
+
+export async function PUT(req: NextRequest) {
+  return handleRequest(req);
+}
+
+export async function DELETE(req: NextRequest) {
+  return handleRequest(req);
+}
+
+export async function PATCH(req: NextRequest) {
+  return handleRequest(req);
+}
+
+export async function OPTIONS(req: NextRequest) {
+  return handleRequest(req);
+}
+
+export async function HEAD(req: NextRequest) {
+  return handleRequest(req);
+}
+
+async function handleRequest(req: NextRequest) {
   const pathSegments = req.nextUrl.pathname.split('/api/proxy/').slice(1);
   const targetPath = pathSegments.join('/');
 
-  console.log(`[Proxy] Incoming request: ${req.method} /api/proxy/${targetPath}`);
-  console.log(`[Proxy] Target Backend URL Base: ${BACKEND_API_URL}`);
+  console.log(`${new Date().toLocaleString()} [Proxy] Incoming request: ${req.method} /api/proxy/${targetPath}`);
+  console.log(`${new Date().toLocaleString()} [Proxy] Target Backend URL Base: ${BACKEND_API_URL}`);
 
   try {
-    const headers = new Headers(req.headers);
-    const cookies = parseCookies({ req }); // Parse all cookies from the incoming request
+    const requestHeaders = new Headers(req.headers);
+    // Use manual cookie parsing instead of nookies
+    const cookies = parseCookiesManual(req);
 
-    // Logic to determine which token (if any) to attach
+    // IMPORTANT: Log all cookies visible to the proxy *after manual parsing*
+    console.log(`${new Date().toLocaleString()} [Proxy] All cookies visible to proxy (manual parse):`, cookies);
+
     const isPublicRoute = PUBLIC_ROUTES.some(route => targetPath.endsWith(route.replace(/^\//, '')));
     const isGeneralLoginRoute = targetPath.endsWith(API_ROUTES.AUTH.LOGIN_GENERAL.replace(/^\//, ''));
+    const isSysAdminRoute = targetPath.startsWith(API_ROUTES.SYSADMIN.RESTAURANTS.BASE.replace(/^\//, ''));
+
+    let authorizationHeaderValue: string | undefined;
 
     if (isPublicRoute) {
-      console.log(`[Proxy] Bypassing token attachment for public route: ${targetPath}`);
-    } else if (isGeneralLoginRoute) {
-      // For general login, we need the RESTAURANT_JWT
+      console.log(`${new Date().toLocaleString()} [Proxy] Bypassing token attachment for public route: ${targetPath}`);
+    } else if (isGeneralLoginRoute || isSysAdminRoute) {
       const restaurantJwt = cookies['RESTAURANT_JWT'];
       if (!restaurantJwt) {
-        console.warn('[Proxy] RESTAURANT_JWT missing for general login attempt.');
+        console.warn(`${new Date().toLocaleString()} [Proxy] RESTAURANT_JWT missing from parsed cookies for route: ${targetPath}`);
         return NextResponse.json({ message: 'RESTAURANT_JWT token missing.' }, { status: 401 });
       }
-      console.log(`[Proxy] Attaching RESTAURANT_JWT for general login.`);
-      headers.set('Authorization', `Bearer ${restaurantJwt}`);
+      console.log(`${new Date().toLocaleString()} [Proxy] Attaching RESTAURANT_JWT for route: ${targetPath}`);
+      authorizationHeaderValue = `Bearer ${restaurantJwt}`;
     } else {
-      // For all other protected routes, we need the user-level "token"
       const userToken = cookies['token'];
       if (!userToken) {
-        console.warn('[Proxy] User-level "token" missing for protected route.');
+        console.warn(`${new Date().toLocaleString()} [Proxy] User-level "token" missing from parsed cookies for protected route: ${targetPath}`);
         return NextResponse.json({ message: 'Authentication token missing.' }, { status: 401 });
       }
-      console.log(`[Proxy] Attaching user-level "token" for protected route.`);
-      headers.set('Authorization', `Bearer ${userToken}`);
+      console.log(`${new Date().toLocaleString()} [Proxy] Attaching user-level "token" for protected route: ${targetPath}`);
+      authorizationHeaderValue = `Bearer ${userToken}`;
     }
 
-    // Clean up headers
-    headers.delete('host');
-    headers.delete('cookie');
+    // Prepare headers to forward to the backend
+    const forwardedHeaders: Record<string, string> = {};
+
+    // Copy all original request headers, EXCEPT for 'host' and 'authorization'
+    for (const [key, value] of requestHeaders.entries()) {
+      if (key.toLowerCase() !== 'host' && key.toLowerCase() !== 'authorization') {
+        forwardedHeaders[key] = value;
+      }
+    }
+
+    // Add or override the Authorization header if a token was determined
+    if (authorizationHeaderValue) {
+        forwardedHeaders['Authorization'] = authorizationHeaderValue;
+    }
+    // Also ensure Content-Type is set if it was originally
+    if (!forwardedHeaders['Content-Type'] && requestHeaders.get('Content-Type')) {
+        forwardedHeaders['Content-Type'] = requestHeaders.get('Content-Type') as string;
+    }
+
 
     const method = req.method;
     let requestBody = undefined;
-    if (method !== 'GET' && method !== 'HEAD') {
+    if (method !== 'GET' && method !== 'HEAD' && req.headers.get('content-length') !== '0') {
       try {
         requestBody = await req.json();
-        console.log(`[Proxy] Request body:`, requestBody);
+        console.log(`${new Date().toLocaleString()} [Proxy] Request body:`, requestBody);
       } catch (error) {
-        console.warn('[Proxy] Could not parse request body as JSON or body is empty (might be fine):', error);
+        console.warn(`${new Date().toLocaleString()} [Proxy] Could not parse request body as JSON (might be empty or non-JSON):`, error);
       }
     }
 
@@ -69,27 +134,26 @@ export async function handler(req: NextRequest) {
     req.nextUrl.searchParams.forEach((value, key) => {
       backendUrl.searchParams.append(key, value);
     });
-    console.log(`[Proxy] Full backend URL:`, backendUrl.toString());
+    console.log(`${new Date().toLocaleString()} [Proxy] Full backend URL:`, backendUrl.toString());
+    console.log(`${new Date().toLocaleString()} [Proxy] Headers being sent to backend:`, forwardedHeaders);
 
-    console.log(`[Proxy] Attempting to forward request to backend...`);
+    console.log(`${new Date().toLocaleString()} [Proxy] Attempting to forward request to backend...`);
     const backendResponse = await axios({
       method: method,
       url: backendUrl.toString(),
-      headers: Object.fromEntries(headers.entries()),
+      headers: forwardedHeaders,
       data: requestBody,
       validateStatus: (status) => true,
     });
 
-    console.log(`[Proxy] Backend response status: ${backendResponse.status}`);
-    console.log(`[Proxy] Backend response data:`, backendResponse.data);
+    console.log(`${new Date().toLocaleString()} [Proxy] Backend response status: ${backendResponse.status}`);
+    console.log(`${new Date().toLocaleString()} [Proxy] Backend response data:`, backendResponse.data);
 
-    // --- IMPORTANT: FORWARD ALL Set-Cookie HEADERS ---
     const responseHeaders = new Headers();
     backendResponse.headers['set-cookie']?.forEach((cookie: string) => {
       responseHeaders.append('Set-Cookie', cookie);
     });
 
-    // Also forward other relevant response headers if needed
     if (backendResponse.headers['content-type']) {
       responseHeaders.set('Content-Type', backendResponse.headers['content-type']);
     }
@@ -100,9 +164,9 @@ export async function handler(req: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('[Proxy] CRITICAL ERROR IN PROXY ROUTE:', error);
+    console.error(`${new Date().toLocaleString()} [Proxy] CRITICAL ERROR IN PROXY ROUTE:`, error);
     if (axios.isAxiosError(error) && error.response) {
-      console.error('[Proxy] Backend API error details:', error.response.status, error.response.data);
+      console.error(`${new Date().toLocaleString()} [Proxy] Backend API error details:`, error.response.status, error.response.data);
 
       const errorResponseHeaders = new Headers();
       if (error.response.headers['set-cookie']) {
@@ -122,11 +186,3 @@ export async function handler(req: NextRequest) {
     return NextResponse.json({ message: 'API proxy encountered an unexpected internal error.' }, { status: 500 });
   }
 }
-
-export const GET = handler;
-export const POST = handler;
-export const PUT = handler;
-export const DELETE = handler;
-export const PATCH = handler;
-export const OPTIONS = handler;
-export const HEAD = handler;

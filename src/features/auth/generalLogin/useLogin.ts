@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { setCookie } from 'nookies';
+import { setCookie, destroyCookie } from 'nookies';
 import { toast } from 'sonner';
 
 import { generalLogin } from '@/features/auth/api';
@@ -28,13 +28,32 @@ export function useLogin() {
   const onSubmit = async (formData: LoginSchema) => {
     setErrorMessage('');
     try {
-      // user.token will be undefined here now, as it's not in JSON response
       const user = await generalLogin(formData);
       setUser(user);
 
-      // REMOVED: setCookie for 'token'
-      // The user-level 'token' cookie is now set by the Spring Boot backend
-      // via a Set-Cookie header, and this header is forwarded by the Next.js API proxy.
+      // Debugging: Log user object from API response
+      console.log("DEBUG: User object received after general login (internal user):", user);
+
+      // --- CRITICAL CHANGE: Set the 'token' from the JSON response as a client-side cookie ---
+      // Your backend returns the 'token' directly in the JSON body for /auth/general/login.
+      // We must manually set this as a client-side cookie.
+      if (user.token) { // Ensure the token exists in the response data
+        setCookie(null, 'token', user.token, {
+          maxAge: 7 * 24 * 60 * 60, // 7 days (or match your backend's JWT expiration)
+          path: '/', // Make it accessible across the entire frontend
+          // For localhost (HTTP), 'secure' must be false. In production (HTTPS), it should be true.
+          secure: process.env.NODE_ENV === 'production',
+          // 'SameSite' attribute for security: 'Lax' or 'Strict' is generally recommended.
+          // 'HttpOnly' must be false for JavaScript to set it.
+          sameSite: 'Lax',
+          httpOnly: false,
+        });
+        console.log("DEBUG: Manually set client-side 'token' cookie from JSON response.");
+      } else {
+        console.warn("DEBUG: 'token' field not found in general login response body. Cannot set client-side cookie.");
+      }
+      // --- END CRITICAL CHANGE ---
+
 
       // Store role as non-HttpOnly if frontend needs direct access (e.g., for conditional UI rendering)
       setCookie(null, 'role', user.role, {
@@ -45,7 +64,15 @@ export function useLogin() {
         httpOnly: false,
       });
 
-      console.log("User object after successful general login:", user);
+      // Debugging: Show all client-side cookies after setting both
+      const cookies = document.cookie.split('; ').reduce((acc, cookie) => {
+        const [name, value] = cookie.split('=');
+        acc[name] = value;
+        return acc;
+      }, {} as Record<string, string>);
+      console.log("DEBUG: All client-side cookies after general login:", cookies);
+
+
       console.log("Attempting to redirect based on role:", user.role);
 
       if (user.role === 'ADMIN') {

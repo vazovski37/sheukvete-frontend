@@ -1,6 +1,6 @@
-// src/features/system-admin/systemAdminApi.ts
+// src/features/sysadmin/api.ts
 
-import API_ROUTES from "@/constants/apiRoutes";
+import API_ROUTES from "@/constants/apiRoutes"; //
 import {
   CreateRestaurantRequest,
   UpdateRestaurantRequest,
@@ -13,22 +13,26 @@ export const getRestaurants = async (
   page: number = 0,
   size: number = 15
 ): Promise<PaginatedRestaurants> => {
-  return apiGet(API_ROUTES.SYSADMIN.RESTAURANTS.GET_ALL, { page, size });
+  // Use BASE for GET ALL, as the backend endpoint is just /restaurant/admin
+  return apiGet(API_ROUTES.SYSADMIN.RESTAURANTS.BASE, { page, size });
 };
 
 export const createRestaurant = async (
   data: CreateRestaurantRequest
 ): Promise<Restaurant> => {
-  return apiPost(API_ROUTES.SYSADMIN.RESTAURANTS.CREATE, data);
+  // Use BASE for CREATE, as the backend endpoint is just /restaurant/admin
+  return apiPost(API_ROUTES.SYSADMIN.RESTAURANTS.BASE, data);
 };
 
 export const updateRestaurant = async (
   id: number,
   data: UpdateRestaurantRequest
 ): Promise<Restaurant> => {
-  return apiPut(API_ROUTES.SYSADMIN.RESTAURANTS.UPDATE_BY_ID(id), data);
+  // Use BY_ID for UPDATE
+  return apiPut(API_ROUTES.SYSADMIN.RESTAURANTS.BY_ID(id), data);
 };
 
 export const deleteRestaurant = async (id: number): Promise<void> => {
-  return apiDelete(API_ROUTES.SYSADMIN.RESTAURANTS.DELETE_BY_ID(id));
+  // Use BY_ID for DELETE
+  return apiDelete(API_ROUTES.SYSADMIN.RESTAURANTS.BY_ID(id));
 };

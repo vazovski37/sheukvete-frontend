@@ -31,20 +31,28 @@ export function useLogin() {
       const user = await login(formData);
       setUser(user);
 
-      // REMOVED: setCookie for 'token' (now 'RESTAURANT_JWT')
-      // The 'RESTAURANT_JWT' cookie is now set by the Spring Boot backend
-      // via a Set-Cookie header, and this header is forwarded by the Next.js API proxy.
+      // Debugging: Log user object from API response
+      console.log("DEBUG: User object received after initial login (SYSTEMADMIN):", user);
 
-      // Store role as non-HttpOnly if frontend needs direct access (e.g., for conditional UI rendering)
+      // We explicitly DO NOT set 'RESTAURANT_JWT' here as it's HttpOnly and set by the backend/proxy.
+      // We only set the 'role' cookie if it needs to be accessible by client-side JavaScript.
       setCookie(null, 'role', user.role, {
         maxAge: 7 * 24 * 60 * 60,
         path: '/',
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'Lax',
-        httpOnly: false,
+        httpOnly: false, // Must be false for frontend to read it
       });
 
-      console.log("User object after successful login:", user);
+      // Debugging: Show only the 'role' cookie, as HttpOnly JWTs won't be visible here.
+      const cookies = document.cookie.split('; ').reduce((acc, cookie) => {
+        const [name, value] = cookie.split('=');
+        acc[name] = value;
+        return acc;
+      }, {} as Record<string, string>);
+      console.log("DEBUG: Client-side cookies after initial login (check browser dev tools for HttpOnly RESTAURANT_JWT):", cookies);
+
+
       console.log("Attempting to redirect based on role:", user.role);
 
       if (user.role === 'RESTAURANT') {

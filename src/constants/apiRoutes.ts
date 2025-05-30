@@ -2,8 +2,8 @@
 
 const API_ROUTES = {
   AUTH: {
-    LOGIN: "/auth/login",
-    LOGIN_GENERAL: "/auth/general/login",
+    LOGIN: "/auth/login", // Initial restaurant/sysadmin login
+    LOGIN_GENERAL: "/auth/general/login", // User login within a restaurant
     LOGOUT: "/auth/logout", // User-level logout (clears "token" cookie)
     LOGOUT_RESTAURANT: "/auth/restaurant/logout", // Restaurant-level logout (clears "RESTAURANT_JWT" cookie)
   },
@@ -74,20 +74,14 @@ const API_ROUTES = {
   },
   SYSADMIN: {
     RESTAURANTS: {
-      GET_ALL: "/restaurant/admin", // GET (Paginated)
-      CREATE: "/restaurant/admin", // POST
-      GET_BY_ID: (id: number) => `/restaurant/admin/${id}`, // GET specific (Though not explicitly used in services, good to have if API supports)
-      UPDATE_BY_ID: (id: number) => `/restaurant/admin/${id}`, // PUT
-      DELETE_BY_ID: (id: number) => `/restaurant/admin/${id}`, // DELETE
+      BASE: "/restaurant/admin", // Base endpoint for all restaurant admin operations
+      GET_ALL: "/restaurant/admin", // Redundant but kept for clarity
+      CREATE: "/restaurant/admin", // Redundant but kept for clarity
+      BY_ID: (id: number) => `/restaurant/admin/${id}`, // For specific restaurant by ID
+      UPDATE_BY_ID: (id: number) => `/restaurant/admin/${id}`, // Redundant but kept for clarity
+      DELETE_BY_ID: (id: number) => `/restaurant/admin/${id}`, // Redundant but kept for clarity
     },
   },
-  // RESERVATIONS: { // This section was in your original file but not found in current services. Keep or remove as needed.
-  //   GET_ALL: "/reservations",
-  //   GET_BY_ID: (id: number) => `/reservations/${id}`,
-  //   CREATE: "/reservations",
-  //   UPDATE: (id: number) => `/reservations/${id}`,
-  //   DELETE: (id: number) => `/reservations/${id}`,
-  // },
 };
 
 export default API_ROUTES;
