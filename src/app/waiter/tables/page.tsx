@@ -1,6 +1,6 @@
 "use client";
 
-import { useOrdersManagement } from "@/hooks/useOrdersManagement";
+import { useOrdersManagement } from "@/features/waiter/hooks/useWaiterOrderManagement";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useRouter } from "next/navigation";
