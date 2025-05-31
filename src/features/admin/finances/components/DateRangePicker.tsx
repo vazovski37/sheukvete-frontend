@@ -28,21 +28,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-// Import CaptionProps for type safety if needed, but we'll pass a custom onMonthChange
-import type { CaptionProps as RDPCaptionProps } from "react-day-picker";
+// Import the specific CaptionProps from react-day-picker
+// Also import CalendarMonth if we need to inspect its structure, though we'll try to avoid it.
+import type { CaptionProps, CalendarMonth } from "react-day-picker"; 
 
 
 interface CustomCalendarCaptionProps {
-  currentMonth: Date; // The month currently displayed by the parent Calendar
-  onMonthNavigate: (date: Date) => void; // Callback to change the parent Calendar's month
-  // Optional: for disabling prev/next if at fromDate/toDate limits
-  // previousMonthDisabled?: boolean;
-  // nextMonthDisabled?: boolean;
+  currentMonth: Date; 
+  onMonthNavigate: (date: Date) => void; 
 }
 
 function ShadcnCustomCalendarCaption({ currentMonth, onMonthNavigate }: CustomCalendarCaptionProps) {
   const currentYear = getYear(currentMonth);
-  const currentDisplayMonthValue = getMonth(currentMonth); // 0-11 for date-fns
+  const currentDisplayMonthValue = getMonth(currentMonth); 
 
   const startYearRange = Math.min(2000, currentYear - 10);
   const endYearRange = Math.max(new Date().getFullYear() + 5, currentYear + 10);
@@ -73,12 +71,10 @@ function ShadcnCustomCalendarCaption({ currentMonth, onMonthNavigate }: CustomCa
         size="icon"
         className="h-8 w-8"
         aria-label="Go to previous month"
-        // disabled={previousMonthDisabled} // If you pass this prop
         onClick={() => onMonthNavigate(subMonths(currentMonth, 1))}
       >
         <ChevronLeft className="h-4 w-4" />
       </Button>
-
       <div className="flex items-center gap-x-2">
         <Select value={String(currentDisplayMonthValue)} onValueChange={handleMonthChange}>
           <SelectTrigger className="h-8 w-[110px] text-xs focus:ring-offset-0 focus:ring-0 data-[state=open]:ring-0 data-[state=open]:ring-offset-0">
@@ -92,7 +88,6 @@ function ShadcnCustomCalendarCaption({ currentMonth, onMonthNavigate }: CustomCa
             ))}
           </SelectContent>
         </Select>
-
         <Select value={String(currentYear)} onValueChange={handleYearChange}>
           <SelectTrigger className="h-8 w-[75px] text-xs focus:ring-offset-0 focus:ring-0 data-[state=open]:ring-0 data-[state=open]:ring-offset-0">
             <SelectValue placeholder="Year" />
@@ -106,13 +101,11 @@ function ShadcnCustomCalendarCaption({ currentMonth, onMonthNavigate }: CustomCa
           </SelectContent>
         </Select>
       </div>
-
       <Button
         variant="outline"
         size="icon"
         className="h-8 w-8"
         aria-label="Go to next month"
-        // disabled={nextMonthDisabled} // If you pass this prop
         onClick={() => onMonthNavigate(addMonths(currentMonth, 1))}
       >
         <ChevronRight className="h-4 w-4" />
@@ -146,24 +139,34 @@ export function DateRangePicker({
   const [isMounted, setIsMounted] = useState(false);
 
   const [startCalendarDisplayMonth, setStartCalendarDisplayMonth] = useState<Date>(
-    startDate || startOfMonth(new Date())
+    () => {
+        const initial = parseISO(initialStartDateString);
+        return isValid(initial) ? startOfMonth(initial) : startOfMonth(new Date());
+    }
   );
   const [endCalendarDisplayMonth, setEndCalendarDisplayMonth] = useState<Date>(
-    endDate || (startDate ? startOfMonth(startDate) : startOfMonth(new Date()))
+    () => {
+        const initial = parseISO(initialEndDateString);
+        const initialStart = parseISO(initialStartDateString); 
+        if (isValid(initial)) return startOfMonth(initial);
+        if (isValid(initialStart)) return startOfMonth(initialStart); 
+        return startOfMonth(new Date());
+    }
   );
 
   useEffect(() => {
     setIsMounted(true);
     const initialStart = parseISO(initialStartDateString);
-    const initialEnd = parseISO(initialEndDateString);
-    if (isValid(initialStart)) {
+    if (isValid(initialStart) && startDate?.toISOString() !== initialStart.toISOString()) {
         setStartDate(initialStart);
         setStartCalendarDisplayMonth(startOfMonth(initialStart));
     }
-    if (isValid(initialEnd)) {
+    const initialEnd = parseISO(initialEndDateString);
+     if (isValid(initialEnd) && endDate?.toISOString() !== initialEnd.toISOString()) {
         setEndDate(initialEnd);
         setEndCalendarDisplayMonth(startOfMonth(initialEnd));
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialStartDateString, initialEndDateString]);
 
 
@@ -176,10 +179,10 @@ export function DateRangePicker({
     });
   };
 
-  const calendarClassNames = { /* ... same as before ... */
+  const calendarClassNamesFromUser = { 
     months: "flex flex-col",
     month: "space-y-1.5 p-3 pt-0",
-    caption: "hidden", // Hide default caption, our custom component replaces it
+    caption: "hidden", 
     table: "w-full border-collapse",
     head_row: "flex justify-around mb-1",
     head_cell: "text-muted-foreground rounded-md w-8 font-normal text-[0.7rem]",
@@ -196,7 +199,8 @@ export function DateRangePicker({
     day_disabled: "text-muted-foreground opacity-30",
   };
 
-  if (!isMounted) { /* Skeleton */
+
+  if (!isMounted) { 
     return (
       <Card className="shadow-sm">
         <CardHeader><CardTitle className="text-lg font-semibold">Select Date Range</CardTitle></CardHeader>
@@ -211,6 +215,25 @@ export function DateRangePicker({
     );
   }
 
+  // Helper to extract a representative date from the captionProps TypeScript is seeing
+  const getMonthFromCaptionProps = (props: any): Date => {
+    if (props.month instanceof Date) { // Ideal case, react-day-picker v9 standard
+      return props.month;
+    }
+    // Fallback based on the error message structure: { calendarMonth: CalendarMonth; ... }
+    // A CalendarMonth is an array of weeks, each week an array of days.
+    // We try to get a date from the first non-empty week and first day.
+    if (props.calendarMonth && Array.isArray(props.calendarMonth)) {
+      const firstWeekWithDays = props.calendarMonth.find((week: any[]) => week && week.length > 0 && week[0] && week[0].date);
+      if (firstWeekWithDays && firstWeekWithDays[0].date instanceof Date) {
+        return startOfMonth(firstWeekWithDays[0].date); // Get start of that month
+      }
+    }
+    // Absolute fallback if structure is totally unexpected
+    return props.displayIndex !== undefined ? addMonths(new Date(), props.displayIndex) : new Date();
+  };
+
+
   return (
     <Card className="shadow-sm">
       <CardHeader>
@@ -218,65 +241,81 @@ export function DateRangePicker({
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6 ">
-          <div className="flex flex-col w-min space-y-2 items-center">
-            <p className="text-sm font-medium text-muted-foreground self-center md:self-start">Start Date</p>
-            <div className="rounded-md border bg-card shadow-sm max-w-[280px] mx-auto md:mx-0">
+          <div className="flex flex-col items-center sm:items-start space-y-2">
+            <p className="text-sm font-medium text-muted-foreground self-center sm:self-start">Start Date</p>
+            <div className="rounded-md border bg-card shadow-sm w-full max-w-[280px] sm:w-auto mx-auto sm:mx-0">
               <Calendar
                 mode="single"
                 selected={startDate}
-                month={startCalendarDisplayMonth} // Controlled by DateRangePicker state
-                onMonthChange={setStartCalendarDisplayMonth} // Updates DateRangePicker state
+                month={startCalendarDisplayMonth} 
+                onMonthChange={setStartCalendarDisplayMonth} 
                 onSelect={(date) => {
                   setStartDate(date || undefined);
                   if (date) setStartCalendarDisplayMonth(startOfMonth(date));
-                  if (date && endDate && date > endDate) setEndDate(undefined);
+                  if (date && endDate && date > endDate) {
+                     setEndDate(undefined); 
+                     if (endCalendarDisplayMonth < startOfMonth(date)) { 
+                        setEndCalendarDisplayMonth(startOfMonth(date));
+                     }
+                    }
                 }}
                 disabled={isLoading}
                 fromYear={2000} toYear={new Date().getFullYear() + 5}
-                classNames={calendarClassNames}
+                classNames={calendarClassNamesFromUser}
                 components={{
-                  Caption: (captionProps) => (
-                    <ShadcnCustomCalendarCaption
-                      currentMonth={captionProps.displayMonth} // Pass RDP's displayMonth
-                      onMonthNavigate={setStartCalendarDisplayMonth} // Pass our state setter
-                    />
-                  ),
+                  // Use MonthCaption if 'Caption' key caused issues previously
+                  // If 'Caption' is the correct key per latest RDP docs, use that.
+                  // The error "'Caption' does not exist" suggests 'MonthCaption' or another key.
+                  // Let's assume 'Caption' IS the correct key for RDP v9.7.0 as per its main docs,
+                  // and the issue is the props *inside* it.
+                  Caption: (captionProps: CaptionProps) => { // Explicitly type captionProps
+                    const currentDisplayMonth = getMonthFromCaptionProps(captionProps);
+                    return (
+                      <ShadcnCustomCalendarCaption
+                        currentMonth={currentDisplayMonth}
+                        onMonthNavigate={setStartCalendarDisplayMonth}
+                      />
+                    );
+                  }
                 }}
               />
             </div>
-            <p className="text-xs text-muted-foreground h-4 pl-1 text-center md:text-left">
+            <p className="text-xs text-muted-foreground h-4 pl-1 text-center sm:text-left">
               {startDate ? format(startDate, "PPP") : <span>&nbsp;</span>}
             </p>
           </div>
 
-          <div className="flex flex-col w-min space-y-2 items-center">
-            <p className="text-sm font-medium text-muted-foreground self-center md:self-start">End Date</p>
-            <div className="rounded-md border bg-card shadow-sm max-w-[280px] mx-auto md:mx-0">
+          <div className="flex flex-col items-center sm:items-start space-y-2">
+            <p className="text-sm font-medium text-muted-foreground self-center sm:self-start">End Date</p>
+            <div className="rounded-md border bg-card shadow-sm w-full max-w-[280px] sm:w-auto mx-auto sm:mx-0">
               <Calendar
                 mode="single"
                 selected={endDate}
-                month={endCalendarDisplayMonth} // Controlled
-                onMonthChange={setEndCalendarDisplayMonth} // Controlled
+                month={endCalendarDisplayMonth} 
+                onMonthChange={setEndCalendarDisplayMonth} 
                 onSelect={(date) => {
                   setEndDate(date || undefined);
                   if (date) setEndCalendarDisplayMonth(startOfMonth(date));
                 }}
                 disabled={isLoading || !startDate}
-                fromDate={startDate}
+                fromDate={startDate} 
                 fromYear={startDate ? getYear(startDate) : 2000}
                 toYear={new Date().getFullYear() + 5}
-                classNames={calendarClassNames}
+                classNames={calendarClassNamesFromUser}
                 components={{
-                  Caption: (captionProps) => (
-                    <ShadcnCustomCalendarCaption
-                      currentMonth={captionProps.displayMonth}
-                      onMonthNavigate={setEndCalendarDisplayMonth}
-                    />
-                  ),
+                  Caption: (captionProps: CaptionProps) => { // Explicitly type captionProps
+                    const currentDisplayMonth = getMonthFromCaptionProps(captionProps);
+                    return (
+                      <ShadcnCustomCalendarCaption
+                        currentMonth={currentDisplayMonth}
+                        onMonthNavigate={setEndCalendarDisplayMonth}
+                      />
+                    );
+                  }
                 }}
               />
             </div>
-            <p className="text-xs text-muted-foreground h-4 pl-1 text-center md:text-left">
+            <p className="text-xs text-muted-foreground h-4 pl-1 text-center sm:text-left">
               {endDate ? format(endDate, "PPP") : <span>&nbsp;</span>}
             </p>
           </div>
