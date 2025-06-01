@@ -4,31 +4,29 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchWaiterOrderByTableId } from "../api"; 
-import { useWaiterOrderManagement } from "../hooks/useWaiterOrderManagement"; 
-// Assuming PartialPaymentPayload will be an array of items matching structure compatible with PartialPaymentRequest
-import type { WaiterDisplayOrder, WaiterDisplayOrderItem, PartialPaymentPayload as LocalPartialPaymentPayload } from "../types"; 
-import type { PartialPaymentRequest } from "@/types/waiter"; // Using the existing type for clarity
+import { fetchWaiterOrderByTableId } from "../api";
+import { useWaiterOrderManagement } from "../hooks/useWaiterOrderManagement";
+import type { WaiterDisplayOrder, WaiterDisplayOrderItem } from "../types";
+import type { PartialPaymentRequest } from "@/types/waiter";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { AlertTriangle, ArrowLeft, CreditCard, Loader2, Minus, Plus, Receipt, Trash2 as Trash } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CreditCard, Loader2, Minus, Plus } from "lucide-react";
 import { format, isValid, parseISO } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
-import { 
-  Select, 
-  SelectTrigger, 
-  SelectValue, 
-  SelectContent, 
-  SelectItem 
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem
 } from "@/components/ui/select";
 
 interface ItemToPay extends WaiterDisplayOrderItem {
-  uniqueDisplayId: string; 
+  uniqueDisplayId: string;
   selectedQuantity: number;
 }
 
@@ -38,9 +36,9 @@ export function PaymentInterface() {
   const tableId = Number(params.tableId);
   const queryClient = useQueryClient();
 
-  const { 
-    payFullOrder, isPayingFullOrder, 
-    payPartialOrder, isPayingPartialOrder 
+  const {
+    payFullOrder, isPayingFullOrder,
+    payPartialOrder, isPayingPartialOrder
   } = useWaiterOrderManagement();
 
   const {
@@ -48,7 +46,6 @@ export function PaymentInterface() {
     isLoading: isLoadingOrder,
     isError,
     error,
-    refetch: refetchOrder,
   } = useQuery<WaiterDisplayOrder | null, Error>({
     queryKey: ["waiter", "order", tableId],
     queryFn: () => (tableId && !isNaN(tableId) ? fetchWaiterOrderByTableId(tableId) : Promise.resolve(null)),
@@ -59,15 +56,19 @@ export function PaymentInterface() {
   const [paymentType, setPaymentType] = useState<"full" | "partial">("full");
   const [additionalPercentage, setAdditionalPercentage] = useState(0);
   const [isMounted, setIsMounted] = useState(false);
+  const [triggerRedirectCheck, setTriggerRedirectCheck] = useState(false); // Corrected initial state
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
   useEffect(() => {
-    if (order?.items) {
+    if (order && Array.isArray(order.items)) { // Ensure order and order.items are valid
       const initialItems = order.items.map((item, index) => {
-        const uniqueDisplayId = item.id?.toString() || `${item.food.name}-${item.comment || 'no_comment'}-${index}`;
+        // Defensive check for item.id and item.food before creating uniqueDisplayId
+        const baseId = item?.id?.toString() || 'unknown_id';
+        const foodName = item?.food?.name || 'unknown_food';
+        const uniqueDisplayId = `${baseId}-${foodName}-${item?.comment || 'no_comment'}-${index}`;
         return {
           ...item,
           uniqueDisplayId: uniqueDisplayId,
@@ -75,9 +76,9 @@ export function PaymentInterface() {
         };
       });
       setItemsToPay(initialItems);
-      
-      if (order["additionall procentage"]) { 
-        setAdditionalPercentage(parseFloat(order["additionall procentage"]) || 0);
+
+      if (order["additionall procentage"]) {
+        setAdditionalPercentage(parseFloat(order["additionall procentage" as keyof WaiterDisplayOrder] as string) || 0);
       } else {
         setAdditionalPercentage(0);
       }
@@ -87,14 +88,32 @@ export function PaymentInterface() {
     }
   }, [order]);
 
+  useEffect(() => {
+    if (triggerRedirectCheck && order && Array.isArray(order.items)) { // Ensure order.items is an array
+      const allItemsEffectivelyPaid = order.items.every(item => item.paidForWaiter || item.quantity === 0);
+      if (allItemsEffectivelyPaid) {
+        toast.info("All items paid for this order. Redirecting...");
+        queryClient.invalidateQueries({ queryKey: ["waiter", "occupiedTables"] });
+        router.push("/waiter");
+      }
+      setTriggerRedirectCheck(false); 
+    } else if (triggerRedirectCheck && order && !Array.isArray(order.items)) {
+      // If order exists but items is not an array (e.g. after a payment might clear it to null/undefined from backend)
+      // and if your API means "no items" implies order is settled, you might redirect here too.
+      // This depends on API behavior. For now, assuming an empty array or all items paid.
+      setTriggerRedirectCheck(false); // Reset anyway
+    }
+  }, [order, triggerRedirectCheck, router, queryClient]);
+
+
   const handleItemQuantityChange = (uniqueDisplayIdToUpdate: string, delta: number) => {
     setItemsToPay(currentItems =>
       currentItems.map(item => {
         if (item.uniqueDisplayId === uniqueDisplayIdToUpdate) {
           if (item.paidForWaiter) {
-            return item; 
+            return item;
           }
-          const maxSelectableForThisItem = item.quantity; 
+          const maxSelectableForThisItem = item.quantity;
           const newSelectedQuantity = Math.max(0, Math.min(maxSelectableForThisItem, item.selectedQuantity + delta));
           return { ...item, selectedQuantity: newSelectedQuantity };
         }
@@ -113,60 +132,72 @@ export function PaymentInterface() {
       })
     );
   }
-  
+
   const handleDeselectAllForPayment = (uniqueDisplayIdToUpdate: string) => {
     setItemsToPay(currentItems =>
-      currentItems.map(item => 
+      currentItems.map(item =>
         (item.uniqueDisplayId === uniqueDisplayIdToUpdate && !item.paidForWaiter) ? { ...item, selectedQuantity: 0 } : item
       )
     );
   }
 
-  const subtotalFullOrder = useMemo(() => {
-    return order?.items.reduce((sum, item) => {
-        return sum + (item.paidForWaiter ? 0 : (item.food.price * item.quantity));
-    }, 0) ?? 0;
+  const subtotalFullOrder = useMemo(() => { // Line 144-145
+    if (!order || !Array.isArray(order.items) || order.items.length === 0) {
+      return 0;
+    }
+    return order.items.reduce((sum, item) => {
+      const price = item?.food?.price;
+      const quantity = item?.quantity;
+      if (typeof price === 'number' && typeof quantity === 'number') {
+        return sum + (item.paidForWaiter ? 0 : (price * quantity));
+      }
+      return sum;
+    }, 0);
   }, [order]);
-  
+
   const additionalAmountFull = (subtotalFullOrder * additionalPercentage) / 100;
   const grandTotalFullOrder = subtotalFullOrder + additionalAmountFull;
 
   const subtotalPartialPayment = useMemo(() => {
-    return itemsToPay.reduce((sum, item) => sum + item.food.price * item.selectedQuantity, 0);
+    if (!Array.isArray(itemsToPay) || itemsToPay.length === 0) {
+      return 0;
+    }
+    return itemsToPay.reduce((sum, item) => {
+      const price = item?.food?.price;
+      const selectedQuantity = item?.selectedQuantity;
+      if (typeof price === 'number' && typeof selectedQuantity === 'number') {
+        return sum + price * selectedQuantity;
+      }
+      return sum;
+    }, 0);
   }, [itemsToPay]);
 
   const additionalAmountPartial = (subtotalPartialPayment * additionalPercentage) / 100;
   const grandTotalPartialPayment = subtotalPartialPayment + additionalAmountPartial;
 
   const handleProcessFullPayment = async () => {
-    if (!order || order.items.filter(item => !item.paidForWaiter).length === 0) {
+    if (!order || !Array.isArray(order.items) || order.items.filter(item => !item.paidForWaiter).length === 0) {
         toast.info("Order is already fully paid or has no payable items.");
         return;
     }
     await payFullOrder(order.table.id, {
       onSuccess: () => {
-        toast.success(`Table ${order.table.tableNumber} paid in full. Order closed.`);
-        queryClient.invalidateQueries({ queryKey: ["waiter", "order", tableId] });
-        queryClient.invalidateQueries({ queryKey: ["waiter", "occupiedTables"] });
         router.push("/waiter");
       },
-      onError: (err: Error) => {
-        toast.error(`Full payment failed: ${err.message}`);
-      }
+      onError: (err: Error) => { /* Handled by hook */ }
     });
   };
 
   const handleProcessPartialPayment = async () => {
     if (!order) return;
-    
-    const itemsForApiPayload: PartialPaymentRequest[] = itemsToPay // Use PartialPaymentRequest from global types
-      .filter(item => item.selectedQuantity > 0 && !item.paidForWaiter) 
+
+    const itemsForApiPayload: PartialPaymentRequest[] = itemsToPay
+      .filter(item => item.selectedQuantity > 0 && !item.paidForWaiter && item.food) // Ensure item.food exists
       .map(item => {
         const payloadItem: PartialPaymentRequest = {
-          foodId: item.food.id, 
+          foodId: item.food.id, // item.food is now guaranteed to exist by filter
           quantityToPay: item.selectedQuantity,
         };
-        // Only add the comment property if it's a non-empty, non-whitespace string
         if (item.comment && item.comment.trim() !== "") {
           payloadItem.comment = item.comment.trim();
         }
@@ -178,27 +209,44 @@ export function PaymentInterface() {
       return;
     }
 
-    // Assuming payPartialOrder hook expects an object with { tableId, items: PartialPaymentRequest[] }
     await payPartialOrder({ tableId: order.table.id, items: itemsForApiPayload }, {
       onSuccess: () => {
-        toast.success("Partial payment successful!");
-        refetchOrder(); 
+        setTriggerRedirectCheck(true);
       },
-      onError: (err: Error) => {
-        toast.error(`Partial payment failed: ${err.message}`);
-      }
+      onError: (err: Error) => { /* Handled by hook */ }
     });
   };
 
   const isProcessingPayment = isPayingFullOrder || isPayingPartialOrder;
 
-  if (!isMounted) return <Skeleton className="h-[500px] w-full" />;
-  if (isLoadingOrder && !order) return <div className="flex justify-center items-center h-64"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
-  if (isError) return <div className="p-4 text-center text-destructive">Error loading order: {error?.message}</div>;
-  
-  const allOriginalItemsEffectivelyPaid = order?.items.every(item => item.paidForWaiter || item.quantity === 0) ?? true;
+  const allOriginalItemsEffectivelyPaid = useMemo(() => {
+    if (!order || !Array.isArray(order.items)) {
+      return true; 
+    }
+    if (order.items.length === 0) {
+      return true; 
+    }
+    return order.items.every(item => item.paidForWaiter || item.quantity === 0);
+  }, [order]);
 
-  if (!order || (order.items.length === 0 && !isLoadingOrder)) {
+  if (!isMounted) return <Skeleton className="h-[500px] w-full" />;
+  
+  // Early return if order is loading and not yet available.
+  // This can prevent trying to access order.items before order is fully loaded.
+  if (isLoadingOrder && !order) {
+      return <div className="flex justify-center items-center h-64"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
+  }
+  
+  if (isError) return <div className="p-4 text-center text-destructive">Error loading order: {error?.message}</div>;
+
+  // This check should now be safer due to isLoadingOrder check above and robust calculations
+  if (!order || !Array.isArray(order.items) || (order.items.length === 0 && !isLoadingOrder)) {
+    // If order.items is not an array, treat as no active order or empty.
+    // The !Array.isArray(order.items) handles cases where order might be an object but order.items is undefined/null
+    if (order && !Array.isArray(order.items) && !isLoadingOrder) {
+        // If order object exists but items is not an array, it's a problematic state.
+        // console.warn("Order data is present but order.items is not an array:", order);
+    }
     return (
       <div className="p-4 text-center">
         <AlertTriangle className="mx-auto h-10 w-10 text-muted-foreground mb-2" />
@@ -215,7 +263,7 @@ export function PaymentInterface() {
           <ArrowLeft className="mr-2 h-4 w-4" /> Back to Order
         </Button>
         <h1 className="text-xl sm:text-2xl font-semibold">
-          Payment - Table {order.table.tableNumber}
+          Payment - Table {order.table?.tableNumber || tableId}
         </h1>
         <div className="w-24"></div> {/* Spacer */}
       </div>
@@ -224,15 +272,15 @@ export function PaymentInterface() {
         <CardHeader>
           <CardTitle className="text-lg">Order Summary</CardTitle>
           <CardDescription>
-            Order ID: #{order.id} | Placed: {isValid(parseISO(order.orderTime)) ? format(parseISO(order.orderTime), "PPpp") : "N/A"}
+            Order ID: #{order.id} | Placed: {(typeof order.orderTime === 'string' && isValid(parseISO(order.orderTime))) ? format(parseISO(order.orderTime), "PPpp") : "N/A"}
           </CardDescription>
         </CardHeader>
         <CardContent>
             <div className="mb-4">
                 <Label htmlFor="paymentType" className="text-sm">Payment Type</Label>
-                <Select 
-                    value={paymentType} 
-                    onValueChange={(v) => setPaymentType(v as "full" | "partial")} 
+                <Select
+                    value={paymentType}
+                    onValueChange={(v) => setPaymentType(v as "full" | "partial")}
                     disabled={isProcessingPayment || allOriginalItemsEffectivelyPaid}
                 >
                     <SelectTrigger id="paymentType" className="mt-1">
@@ -251,33 +299,33 @@ export function PaymentInterface() {
                     <h3 className="text-md font-medium mb-2">Select Items for Partial Payment:</h3>
                     {itemsToPay.filter(item => !item.paidForWaiter && item.quantity > 0).length > 0 ? (
                         itemsToPay.filter(item => !item.paidForWaiter && item.quantity > 0).map((item) => {
-                            const originalQuantityOfThisLineItem = item.quantity; 
+                            const originalQuantityOfThisLineItem = item.quantity;
                             return (
-                                <div key={item.uniqueDisplayId} className="flex items-center justify-between gap-2 p-2 border-b last:border-b-0"> 
+                                <div key={item.uniqueDisplayId} className="flex items-center justify-between gap-2 p-2 border-b last:border-b-0">
                                     <div className="flex-1">
-                                        <p className="text-sm font-medium">{item.food.name} {item.comment && <span className="text-xs text-muted-foreground">({item.comment})</span>}</p>
+                                        <p className="text-sm font-medium">{item.food?.name || 'N/A'} {item.comment && <span className="text-xs text-muted-foreground">({item.comment})</span>}</p>
                                         <p className="text-xs text-muted-foreground">
-                                            Selected: {item.selectedQuantity} / {originalQuantityOfThisLineItem} @ ${item.food.price.toFixed(2)}
+                                            Selected: {item.selectedQuantity} / {originalQuantityOfThisLineItem} @ ${(item.food?.price || 0).toFixed(2)}
                                         </p>
                                     </div>
                                     <div className="flex items-center gap-1.5">
-                                        <Button variant="ghost" size="icon" className="h-7 w-7" 
-                                                onClick={() => handleItemQuantityChange(item.uniqueDisplayId, -1)} 
+                                        <Button variant="ghost" size="icon" className="h-7 w-7"
+                                                onClick={() => handleItemQuantityChange(item.uniqueDisplayId, -1)}
                                                 disabled={item.selectedQuantity <= 0 || isProcessingPayment}>
                                             <Minus className="h-3.5 w-3.5"/>
                                         </Button>
                                         <Input type="number" value={item.selectedQuantity} readOnly className="h-7 w-10 text-center text-xs p-0 border-0 bg-transparent" />
-                                        <Button variant="ghost" size="icon" className="h-7 w-7" 
-                                                onClick={() => handleItemQuantityChange(item.uniqueDisplayId, 1)} 
+                                        <Button variant="ghost" size="icon" className="h-7 w-7"
+                                                onClick={() => handleItemQuantityChange(item.uniqueDisplayId, 1)}
                                                 disabled={item.selectedQuantity >= originalQuantityOfThisLineItem || isProcessingPayment}>
                                             <Plus className="h-3.5 w-3.5"/>
                                         </Button>
                                         <div className="flex flex-col gap-0.5">
-                                            <Button variant="outline" size="sm" className="h-[1.3rem] px-1.5 text-[0.65rem]" 
-                                                    onClick={() => handleSelectAllForPayment(item.uniqueDisplayId)} 
+                                            <Button variant="outline" size="sm" className="h-[1.3rem] px-1.5 text-[0.65rem]"
+                                                    onClick={() => handleSelectAllForPayment(item.uniqueDisplayId)}
                                                     disabled={item.selectedQuantity === originalQuantityOfThisLineItem || isProcessingPayment}>All</Button>
-                                            <Button variant="outline" size="sm" className="h-[1.3rem] px-1.5 text-[0.65rem]" 
-                                                    onClick={() => handleDeselectAllForPayment(item.uniqueDisplayId)} 
+                                            <Button variant="outline" size="sm" className="h-[1.3rem] px-1.5 text-[0.65rem]"
+                                                    onClick={() => handleDeselectAllForPayment(item.uniqueDisplayId)}
                                                     disabled={item.selectedQuantity === 0 || isProcessingPayment}>None</Button>
                                         </div>
                                     </div>
@@ -292,21 +340,21 @@ export function PaymentInterface() {
         </CardContent>
         <CardFooter className="flex flex-col items-end gap-1 border-t pt-4">
             <p className="text-sm">
-                Subtotal: 
+                Subtotal:
                 <span className="font-semibold ml-1">
                     ${(paymentType === 'full' ? subtotalFullOrder : subtotalPartialPayment).toFixed(2)}
                 </span>
             </p>
             {additionalPercentage > 0 && (
                   <p className="text-xs text-muted-foreground">
-                    Service Charge ({additionalPercentage}%): 
+                    Service Charge ({additionalPercentage}%):
                     <span className="ml-1">
                       ${(paymentType === 'full' ? additionalAmountFull : additionalAmountPartial).toFixed(2)}
                     </span>
                 </p>
             )}
             <p className="text-lg font-bold text-primary">
-                Total Due: 
+                Total Due:
                 <span className="ml-1">
                   ${(paymentType === 'full' ? grandTotalFullOrder : grandTotalPartialPayment).toFixed(2)}
                 </span>

@@ -1,14 +1,13 @@
 // src/features/waiter/components/OrderViewer.tsx
 "use client";
 
-import { useParams, useRouter,  } from "next/navigation";
-import { useEffect, useMemo } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchWaiterOrderByTableId } from "../api";
-import type { WaiterDisplayOrder } from "../types";
+import type { WaiterDisplayOrder } from "../types"; // Assuming WaiterDisplayOrderItem is part of this or imported elsewhere
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, ArrowLeft, CreditCard, Edit3, Loader2 } from "lucide-react";
 import { format, parseISO, isValid } from "date-fns";
@@ -25,14 +24,21 @@ export function OrderViewer() {
     error,
   } = useQuery<WaiterDisplayOrder | null, Error>({
     queryKey: ["waiter", "order", tableId],
-    queryFn: () => (tableId ? fetchWaiterOrderByTableId(tableId) : Promise.resolve(null)),
+    queryFn: () => (tableId && !isNaN(tableId) ? fetchWaiterOrderByTableId(tableId) : Promise.resolve(null)),
     enabled: !!tableId && !isNaN(tableId),
     staleTime: 1 * 60 * 1000, // 1 minute
   });
 
   const totalAmount = useMemo(() => {
-    if (!order?.items) return 0;
-    return order.items.reduce((sum, item) => sum + item.food.price * item.quantity, 0);
+    if (!order || !Array.isArray(order.items)) return 0; // Check if items is an array
+    return order.items.reduce((sum, item) => {
+      const price = item?.food?.price;
+      const quantity = item?.quantity;
+      if (typeof price === 'number' && typeof quantity === 'number') {
+        return sum + price * quantity;
+      }
+      return sum;
+    }, 0);
   }, [order]);
 
   if (!tableId || isNaN(tableId)) {
@@ -92,8 +98,8 @@ export function OrderViewer() {
     );
   }
 
-  // Calculate additional percentage amount if present
-  const additionalPercentageValue = parseFloat(order["additionall procentage"] || "0");
+  const tableNumberDisplay = order.table?.tableNumber ?? tableId;
+  const additionalPercentageValue = parseFloat(order["additionall procentage" as keyof WaiterDisplayOrder] as string || "0");
   const additionalAmount = (totalAmount * additionalPercentageValue) / 100;
   const grandTotal = totalAmount + additionalAmount;
 
@@ -104,7 +110,7 @@ export function OrderViewer() {
           <ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard
         </Button>
         <h1 className="text-xl sm:text-2xl font-semibold text-center">
-          Order Details - Table {order.table.tableNumber}
+          Order Details - Table {tableNumberDisplay}
         </h1>
         <div className="w-24"> {/* Spacer */} </div>
       </div>
@@ -115,8 +121,10 @@ export function OrderViewer() {
             <div>
               <CardTitle className="text-lg">Order ID: #{order.id}</CardTitle>
               <CardDescription>
-                Placed by: {order.waiter.username} on{" "}
-                {isValid(parseISO(order.orderTime)) ? format(parseISO(order.orderTime), "PPpp") : "Invalid Date"}
+                Placed by: {order.waiter?.username || 'N/A'} on{" "}
+                {typeof order.orderTime === 'string' && isValid(parseISO(order.orderTime))
+                  ? format(parseISO(order.orderTime), "PPpp")
+                  : "Invalid Date"}
               </CardDescription>
             </div>
             <Badge variant={order.paid ? "success" : "secondary"}>
@@ -125,16 +133,17 @@ export function OrderViewer() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {order.items.length > 0 ? (
-            order.items.map((item) => (
+          {/* Ensure item.id below is genuinely unique for each item in the list */}
+          {Array.isArray(order.items) && order.items.length > 0 ? (
+            order.items.map((item) => ( // Line 142 from your log
               <div
-                key={item.id} // Assuming item.id is the unique OrderItem ID
+                key={item.id} // If this error persists, item.id is not unique in your data.
                 className="flex items-start justify-between gap-3 p-3 border rounded-md bg-muted/20"
               >
                 <div className="flex-grow">
-                  <p className="font-medium text-sm">{item.food.name}</p>
+                  <p className="font-medium text-sm">{item.food?.name || 'Unknown Food'}</p>
                   <p className="text-xs text-muted-foreground">
-                    Category: {item.food.category.name}
+                    Category: {item.food?.category?.name || 'N/A'}
                   </p>
                   {item.comment && (
                     <p className="text-xs italic text-blue-600 dark:text-blue-400">
@@ -144,10 +153,10 @@ export function OrderViewer() {
                 </div>
                 <div className="text-right flex-shrink-0">
                   <p className="text-sm">
-                    {item.quantity} x ${item.food.price.toFixed(2)}
+                    {item.quantity || 0} x ${(item.food?.price || 0).toFixed(2)}
                   </p>
                   <p className="text-sm font-semibold">
-                    ${(item.quantity * item.food.price).toFixed(2)}
+                    ${((item.quantity || 0) * (item.food?.price || 0)).toFixed(2)}
                   </p>
                    {item.paidForWaiter && <Badge variant="success" className="mt-1 text-xs">Paid</Badge>}
                 </div>
@@ -157,7 +166,7 @@ export function OrderViewer() {
             <p className="text-sm text-muted-foreground text-center py-4">No items in this order.</p>
           )}
         </CardContent>
-        {order.items.length > 0 && (
+        {Array.isArray(order.items) && order.items.length > 0 && (
           <CardFooter className="flex flex-col items-end gap-1 pt-4 border-t">
             <p className="text-sm">
               Subtotal: <span className="font-medium">${totalAmount.toFixed(2)}</span>
@@ -179,9 +188,8 @@ export function OrderViewer() {
           <Button
             size="lg"
             variant="default"
-            className=""
             onClick={() => router.push(`/waiter/pay/${tableId}`)}
-            disabled={order.items.length === 0}
+            disabled={!Array.isArray(order.items) || order.items.length === 0}
           >
             <CreditCard className="mr-2 h-5 w-5" /> Proceed to Payment
           </Button>
@@ -189,10 +197,9 @@ export function OrderViewer() {
         <Button
           size="lg"
           variant="outline"
-          className=""
           onClick={() => router.push(`/waiter/orders/update/${tableId}`)}
         >
-          <Edit3 className="mr-2 h-5 w-5" /> {order.items.length > 0 ? "Modify Order" : "Create Order"}
+          <Edit3 className="mr-2 h-5 w-5" /> {Array.isArray(order.items) && order.items?.length > 0 ? "Modify Order" : "Create Order"}
         </Button>
       </div>
     </div>
