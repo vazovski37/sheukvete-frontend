@@ -26,10 +26,10 @@ const LoginForm = () => {
       <Card className="w-full max-w-md rounded-2xl shadow-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-semibold tracking-tight">
-            Sign in
+            Sign in to restaurant
           </CardTitle>
           <p className="text-sm text-muted-foreground mt-1">
-            Enter your credentials to access your account
+            Enter your credentials to access your restaurant
           </p>
         </CardHeader>
 

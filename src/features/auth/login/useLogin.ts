@@ -68,9 +68,9 @@ export function useLogin() {
       toast.success("Login successful!");
 
     } catch (e: any) {
-      console.error("Login failed:", e);
-      setErrorMessage(e.message || 'Invalid login credentials');
-      toast.error(e.message || 'Invalid login credentials');
+      console.error("Login failed:", e );
+      setErrorMessage(e.response.error || 'Invalid login credentials');
+      toast.error(e.response.error || 'Invalid login credentials');
     }
   };
 

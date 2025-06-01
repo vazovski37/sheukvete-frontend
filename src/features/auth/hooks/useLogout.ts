@@ -30,9 +30,9 @@ export const useLogout = () => {
 
       // Clear cookies from the client-side.
       // Since 'token' is now set by JS, it can be destroyed by JS.
+      destroyCookie(null, "RESTAURANT_JWT", { path: '/' }); // Clear restaurant-level token cookie (HttpOnly, but good to try destroying)
       destroyCookie(null, "token", { path: '/' }); // Clear user-level token cookie
       destroyCookie(null, "role", { path: '/' }); // Clear role cookie (non-HttpOnly)
-      destroyCookie(null, "RESTAURANT_JWT", { path: '/' }); // Clear restaurant-level token cookie (HttpOnly, but good to try destroying)
 
       // Clear Zustand user store
       logoutUserStore();
@@ -43,9 +43,9 @@ export const useLogout = () => {
     onError: (error) => {
       console.error("Logout failed", error);
       // Even if API logout fails, clear client-side state and redirect for UX
+      destroyCookie(null, "RESTAURANT_JWT", { path: '/' });
       destroyCookie(null, "token", { path: '/' });
       destroyCookie(null, "role", { path: '/' });
-      destroyCookie(null, "RESTAURANT_JWT", { path: '/' });
       logoutUserStore();
       router.push("/login");
     },
