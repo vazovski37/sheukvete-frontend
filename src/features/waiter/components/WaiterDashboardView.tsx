@@ -1,7 +1,7 @@
 // src/features/waiter/components/WaiterDashboardView.tsx
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react"; // useEffect removed as refetch functions are not exposed by the current hook
 import { useRouter } from "next/navigation";
 import { useWaiterOrderManagement } from "../hooks/useWaiterOrderManagement";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,12 +45,12 @@ function TableCard({ table, isOccupied, onViewOrder, onUpdateOrder, onPayOrder }
       <CardHeader className="relative px-4 pt-4 pb-2">
         <Badge
           variant={isOccupied ? "destructive" : "success"}
-          className="absolute top-2 right-2 text-xs px-2 py-[2px] rounded-md shadow" // Corrected text size for visibility
+          className="absolute top-2 right-2 text-xs px-2 py-[2px] rounded-md shadow"
         >
           {isOccupied ? "Occupied" : "Available"}
         </Badge>
 
-        <div className="flex items-center justify-start gap-2"> {/* Align title to start */}
+        <div className="flex items-center justify-start gap-2">
           <span className="text-lg">🍽️</span>
           <CardTitle className="text-base font-semibold">Table {table.tableNumber}</CardTitle>
         </div>
@@ -78,10 +78,21 @@ function TableCard({ table, isOccupied, onViewOrder, onUpdateOrder, onPayOrder }
 
 export function WaiterDashboardView() {
   const router = useRouter();
-  const { tables, occupiedTables, isLoadingTables, isLoadingOccupiedTables } = useWaiterOrderManagement();
+  // Destructuring based on the latest useWaiterOrderManagement.ts provided
+  // which does not explicitly return refetchOccupiedTables or refetchTables
+  const {
+    tables,
+    occupiedTables,
+    isLoadingTables,
+    isLoadingOccupiedTables,
+  } = useWaiterOrderManagement();
   const [filter, setFilter] = useState<"ALL" | "AVAILABLE" | "OCCUPIED">("ALL");
   const { logout, isPending: isLoggingOut } = useLogout();
   const user = useUserStore((state) => state.user);
+
+  // The explicit useEffect for refetching has been removed as the current
+  // version of useWaiterOrderManagement.ts does not expose refetch functions.
+  // The cache invalidation in the hook itself is the primary mechanism for data freshness.
 
   const isLoading = isLoadingTables || isLoadingOccupiedTables;
 
@@ -103,6 +114,7 @@ export function WaiterDashboardView() {
   }, [tables, occupiedTableIds, filter]);
 
   // Skeleton for initial loading state
+  // This handles the case where data is loading and we don't have tables/occupiedTables yet.
   if (isLoading && tables.length === 0 && occupiedTables.length === 0) {
     return (
       <div className="p-4 sm:p-6 space-y-6">
@@ -113,7 +125,6 @@ export function WaiterDashboardView() {
             <Skeleton className="h-9 w-24" />
           </div>
         </div>
-         {/* Skeleton for summary cards - 1 column on mobile, 2 on sm+ with first spanning */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
             <div className="sm:col-span-2">
                 <Skeleton className="h-24 w-full" />
@@ -156,37 +167,36 @@ export function WaiterDashboardView() {
         </div>
       </div>
 
-      {/* Responsive Summary Cards Section */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Total Tables Card: Full width on sm+ screens, stacks on mobile */}
-        <div className="sm:col-span-2">
+      <div className="grid grid-cols-2 sm:grid-row-1 gap-4">
+        <div className="col-span-2 sm:col-span-1">
           <Card>
             <CardHeader className="pb-2 pt-3">
               <CardTitle className="text-sm font-semibold">Total Tables</CardTitle>
             </CardHeader>
             <CardContent className="text-2xl font-bold h-10 flex items-center pt-1">
-              {isLoading ? <Loader2 className="animate-spin size-6" /> : tables.length}
+              {/* Show loader if tables haven't loaded yet, otherwise show length */}
+              {isLoadingTables && tables.length === 0 ? <Loader2 className="animate-spin size-6" /> : tables.length}
             </CardContent>
           </Card>
         </div>
 
-        {/* Available Tables Card: Stacks on mobile, 1st col on sm+ */}
         <Card>
           <CardHeader className="pb-2 pt-3">
             <CardTitle className="text-sm font-semibold">Available Tables</CardTitle>
           </CardHeader>
           <CardContent className="text-2xl font-bold h-10 flex items-center pt-1">
-            {isLoading ? <Loader2 className="animate-spin size-6" /> : tables.length - occupiedTables.length}
+            {/* Show loader if either table source is loading and we don't have initial data */}
+            {isLoading && tables.length === 0 ? <Loader2 className="animate-spin size-6" /> : tables.length - occupiedTables.length}
           </CardContent>
         </Card>
 
-        {/* Occupied Tables Card: Stacks on mobile, 2nd col on sm+ */}
         <Card>
           <CardHeader className="pb-2 pt-3">
             <CardTitle className="text-sm font-semibold">Occupied Tables</CardTitle>
           </CardHeader>
           <CardContent className="text-2xl font-bold h-10 flex items-center pt-1">
-            {isLoading ? <Loader2 className="animate-spin size-6" /> : occupiedTables.length}
+             {/* Show loader if occupiedTables haven't loaded (and tables might also be loading) */}
+            {isLoadingOccupiedTables && occupiedTables.length === 0 && tables.length === 0 ? <Loader2 className="animate-spin size-6" /> : occupiedTables.length}
           </CardContent>
         </Card>
       </div>
@@ -200,8 +210,8 @@ export function WaiterDashboardView() {
           <TabsTrigger value="OCCUPIED" className="text-xs sm:text-sm">Occupied</TabsTrigger>
         </TabsList>
 
-        <TabsContent value={filter} className="mt-2"> {/* Adjusted margin for TabsContent */}
-          {isLoading && filteredTables.length === 0 && (tables.length > 0 || occupiedTables.length > 0) ? (
+        <TabsContent value={filter} className="mt-2">
+          {isLoading && filteredTables.length === 0 && (tables.length > 0 || occupiedTables.length > 0) && !(tables.length === 0 && occupiedTables.length === 0) ? (
             <div className="flex justify-center py-8">
               <Loader2 className="animate-spin size-6 text-muted-foreground" />
             </div>
@@ -216,19 +226,25 @@ export function WaiterDashboardView() {
               <p className="text-muted-foreground">No tables match the filter "{filter.toLowerCase()}".</p>
             </div>
           ) : (
-            // Grid for Table Cards - using the responsive classes from your full file
-            <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-              {filteredTables.map((table) => (
-                <TableCard
-                  key={table.id}
-                  table={table}
-                  isOccupied={occupiedTableIds.has(table.id)}
-                  onViewOrder={handleViewOrder}
-                  onUpdateOrder={handleUpdateOrder}
-                  onPayOrder={handlePayOrder}
-                />
-              ))}
-            </div>
+            filteredTables.length > 0 ? (
+                <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                {filteredTables.map((table) => (
+                    <TableCard
+                    key={table.id}
+                    table={table}
+                    isOccupied={occupiedTableIds.has(table.id)}
+                    onViewOrder={handleViewOrder}
+                    onUpdateOrder={handleUpdateOrder}
+                    onPayOrder={handlePayOrder}
+                    />
+                ))}
+                </div>
+            ) : (
+                 !isLoading && tables.length > 0 && filter === "ALL" &&
+                 <div className="py-10 text-center col-span-full">
+                     <p className="text-muted-foreground">No tables to display.</p>
+                 </div>
+            )
           )}
         </TabsContent>
       </Tabs>

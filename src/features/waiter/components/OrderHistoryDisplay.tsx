@@ -40,10 +40,9 @@ export function OrderHistoryDisplay() {
     <div className="p-4 sm:p-6 space-y-6">
       <div className="flex items-center justify-between">
         <Button variant="outline" size="sm" onClick={() => router.push("/waiter")}>
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard
+          <ArrowLeft className="mr-2 h-4 w-4" /> Back 
         </Button>
         <h1 className="text-xl sm:text-2xl font-semibold">Order History</h1>
-        <div className="w-24"></div> {/* Spacer */}
       </div>
 
       {orderHistory.length === 0 ? (

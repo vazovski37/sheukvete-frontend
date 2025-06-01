@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchWaiterOrderByTableId } from "../api";
-import type { WaiterDisplayOrder } from "../types"; // Assuming WaiterDisplayOrderItem is part of this or imported elsewhere
+import type { WaiterDisplayOrder } from "../types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -30,7 +30,7 @@ export function OrderViewer() {
   });
 
   const totalAmount = useMemo(() => {
-    if (!order || !Array.isArray(order.items)) return 0; // Check if items is an array
+    if (!order || !Array.isArray(order.items)) return 0;
     return order.items.reduce((sum, item) => {
       const price = item?.food?.price;
       const quantity = item?.quantity;
@@ -99,7 +99,9 @@ export function OrderViewer() {
   }
 
   const tableNumberDisplay = order.table?.tableNumber ?? tableId;
-  const additionalPercentageValue = parseFloat(order["additionall procentage" as keyof WaiterDisplayOrder] as string || "0");
+  // Accessing "additionall procentage" safely, assuming it might be misspelled in the response.
+  const additionalPercentageString = order["additionall procentage" as keyof WaiterDisplayOrder] || order["additionalPercentage" as keyof WaiterDisplayOrder] || "0";
+  const additionalPercentageValue = parseFloat(additionalPercentageString as string || "0");
   const additionalAmount = (totalAmount * additionalPercentageValue) / 100;
   const grandTotal = totalAmount + additionalAmount;
 
@@ -112,7 +114,7 @@ export function OrderViewer() {
         <h1 className="text-xl sm:text-2xl font-semibold text-center">
           Order Details - Table {tableNumberDisplay}
         </h1>
-        <div className="w-24"> {/* Spacer */} </div>
+        <div className="w-24 hidden sm:block"> {/* Spacer, hidden on small screens */} </div>
       </div>
 
       <Card>
@@ -133,11 +135,11 @@ export function OrderViewer() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Ensure item.id below is genuinely unique for each item in the list */}
           {Array.isArray(order.items) && order.items.length > 0 ? (
-            order.items.map((item) => ( // Line 142 from your log
+            order.items.map((item, index) => ( // Added index for the key
               <div
-                key={item.id} // If this error persists, item.id is not unique in your data.
+                // MODIFIED KEY: Using a composite key as item.id is missing from backend item lines
+                key={`order-item-${item.food?.id || 'unknown-food'}-${item.comment || 'no-comment'}-${index}`}
                 className="flex items-start justify-between gap-3 p-3 border rounded-md bg-muted/20"
               >
                 <div className="flex-grow">
@@ -158,7 +160,7 @@ export function OrderViewer() {
                   <p className="text-sm font-semibold">
                     ${((item.quantity || 0) * (item.food?.price || 0)).toFixed(2)}
                   </p>
-                   {item.paidForWaiter && <Badge variant="success" className="mt-1 text-xs">Paid</Badge>}
+                  {item.paidForWaiter && <Badge variant="success" className="mt-1 text-xs">Paid</Badge>}
                 </div>
               </div>
             ))
