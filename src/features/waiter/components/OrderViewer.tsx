@@ -179,7 +179,7 @@ export function OrderViewer() {
           <Button
             size="lg"
             variant="default"
-            className="flex-1"
+            className=""
             onClick={() => router.push(`/waiter/pay/${tableId}`)}
             disabled={order.items.length === 0}
           >
@@ -189,7 +189,7 @@ export function OrderViewer() {
         <Button
           size="lg"
           variant="outline"
-          className="flex-1"
+          className=""
           onClick={() => router.push(`/waiter/orders/update/${tableId}`)}
         >
           <Edit3 className="mr-2 h-5 w-5" /> {order.items.length > 0 ? "Modify Order" : "Create Order"}
